@@ -69,6 +69,19 @@
         ctx.strokeStyle = col('#7c2f2a', fl); ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.moveTo(0, -3); ctx.lineTo(0, 13); ctx.quadraticCurveTo(0, 16, 3, 15.5); ctx.stroke();
         break;
+      case 'hoe':
+        ctx.strokeStyle = wood; ctx.lineWidth = 1.7;
+        ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, 15); ctx.stroke();
+        ctx.fillStyle = steel;
+        ctx.beginPath(); ctx.moveTo(-0.5, 13.5); ctx.lineTo(6.5, 14.5); ctx.lineTo(6.2, 17); ctx.lineTo(-0.5, 15.6); ctx.closePath(); ctx.fill();
+        break;
+      case 'pickaxe':
+        ctx.strokeStyle = wood; ctx.lineWidth = 1.9;
+        ctx.beginPath(); ctx.moveTo(0, -3); ctx.lineTo(0, 14); ctx.stroke();
+        ctx.strokeStyle = steel; ctx.lineWidth = 2.1;
+        ctx.beginPath(); ctx.moveTo(-6.5, 11); ctx.quadraticCurveTo(0, 15.5, 6.5, 11); ctx.stroke();
+        ctx.fillStyle = col('#d8dde2', fl); ctx.fillRect(-7.2, 10.2, 1.4, 1.4); ctx.fillRect(5.8, 10.2, 1.4, 1.4);
+        break;
       case 'knife':
         ctx.strokeStyle = dark; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(0, -1); ctx.lineTo(0, 2); ctx.stroke();
@@ -234,12 +247,16 @@
     let bowDraw = 0;
     if (o.pose === 'bow') { aF = 1.5; bF = 0.05; aB = 1.1; bB = 1.25; bowDraw = o.atk > 0 ? 0 : 0.9; }
     else if (o.pose === 'work') { const k = Math.abs(Math.sin(t * 7 + seed)); aF = -0.4 + k * 1.6; bF = 0.6; }
-    if (o.atk > 0 && o.pose !== 'bow') {
+    else if (o.pose === 'hoe') { const k = Math.abs(Math.sin(t * 3.2 + seed)); aF = 0.5 + k * 0.9; bF = 0.2; aB = aF - 0.35; bB = 0.3; }
+    else if (o.pose === 'carry') { aF = -2.55; bF = -0.5; aB = -2.4; bB = -0.6; }
+    else if (o.pose === 'chop' || o.pose === 'mine') { aF = 1.25; bF = 0.15; aB = 1.05; bB = 0.3; }
+    if (o.atk > 0 && o.pose !== 'bow' && o.pose !== 'carry') {
       const p = 1 - o.atk;
+      const end = o.pose === 'chop' ? 1.75 : o.pose === 'mine' ? 1.2 : 1.45;
       if (p < 0.3) aF = U.lerp(aF, -2.3, p / 0.3);
-      else aF = U.lerp(-2.3, 1.45, Math.min(1, (p - 0.3) / 0.45));
+      else aF = U.lerp(-2.3, end, Math.min(1, (p - 0.3) / 0.45));
       bF = 0.25;
-      if (o.armsForward) aB = aF - 0.25;
+      if (o.armsForward || o.pose === 'chop' || o.pose === 'mine') { aB = aF - 0.25; bB = 0.25; }
     }
 
     const tw = 5.6 * w, top = shY - 1.5, bot = hipY + 2;
@@ -360,9 +377,10 @@
       ctx.beginPath(); ctx.arc(mx, my, 1.7, 0, TAU); ctx.fill();
       ctx.fillStyle = '#c62f2f'; ctx.fillRect(mx - 1, my - 0.3, 2, 0.6); ctx.fillRect(mx - 0.3, my - 1, 0.6, 2);
     }
-    if (o.tool) tool(ctx, o.tool, af[0], af[1], af[2], fl, bowDraw);
+    if (o.tool && o.pose !== 'carry') tool(ctx, o.tool, af[0], af[1], af[2], fl, bowDraw);
     ctx.fillStyle = skin;
     ctx.beginPath(); ctx.arc(af[0], af[1], 1.95 * Math.min(1.4, w), 0, TAU); ctx.fill();
+    if (o.pose === 'carry') D.load(ctx, o.carryKind, 0, shY - 7, fl);
 
     ctx.restore(); // lean
     ctx.restore();
@@ -692,6 +710,16 @@
     ctx.beginPath(); ctx.moveTo(-15, -4); ctx.lineTo(15, -Hh + 6); ctx.moveTo(15, -4); ctx.lineTo(-15, -Hh + 6); ctx.stroke();
     ctx.strokeStyle = post; ctx.lineWidth = 3.8;
     ctx.beginPath(); ctx.moveTo(-15, 0); ctx.lineTo(-15, -Hh); ctx.moveTo(15, 0); ctx.lineTo(15, -Hh); ctx.stroke();
+    if (lvl >= 3) {
+      const sh = lvl >= 5 ? 26 : 14;
+      ctx.fillStyle = '#6f6b66'; ctx.fillRect(-18, -sh, 36, sh);
+      ctx.fillStyle = '#86817b'; ctx.fillRect(-18, -sh, 36, 2.5);
+      ctx.strokeStyle = 'rgba(40,36,32,0.6)'; ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      for (let yy = -sh + 6; yy < 0; yy += 6) { ctx.moveTo(-18, yy); ctx.lineTo(18, yy); }
+      for (let xx = -12; xx < 18; xx += 9) { ctx.moveTo(xx, -sh + 2.5); ctx.lineTo(xx, -sh + 6); ctx.moveTo(xx + 4, -sh + 6); ctx.lineTo(xx + 4, -sh + 12); }
+      ctx.stroke();
+    }
     ctx.strokeStyle = '#7a5a38'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(-4, 0); ctx.lineTo(-4, -Hh); ctx.moveTo(4, 0); ctx.lineTo(4, -Hh);
     for (let i = 6; i < Hh; i += 6) { ctx.moveTo(-4, -i); ctx.lineTo(4, -i); }
@@ -734,6 +762,12 @@
     ctx.beginPath(); ctx.moveTo(16.8, -Hh - 17); ctx.quadraticCurveTo(19, -Hh - 17 - fh * 1.3, 21.2, -Hh - 17); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#ffe08a';
     ctx.beginPath(); ctx.moveTo(18, -Hh - 17); ctx.quadraticCurveTo(19, -Hh - 17 - fh * 0.7, 20, -Hh - 17); ctx.closePath(); ctx.fill();
+    if (lvl >= 5) {
+      ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(-18, -Hh - 12); ctx.lineTo(-19, -Hh - 17); ctx.stroke();
+      ctx.fillStyle = '#ff8a2a';
+      ctx.beginPath(); ctx.moveTo(-21.2, -Hh - 17); ctx.quadraticCurveTo(-19, -Hh - 17 - fh * 1.3, -16.8, -Hh - 17); ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
   };
   D.TOWER_H = 48;
@@ -807,6 +841,442 @@
       }
     }
     for (let i = 0; i < stones; i++) if (Math.sin(i / stones * TAU) >= 0) stone(i);
+    ctx.restore();
+  };
+
+  // ================= town buildings =================
+  const shadow = (ctx, w, h, ox) => { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(ox || 4, 2, w, h, 0, 0, TAU); ctx.fill(); };
+  const roofCol = (lvl) => (lvl >= 5 ? '#8e3b2e' : lvl >= 3 ? '#6b4a3a' : '#a08850');
+  const lines = (ctx, color, lw, segs) => { ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); for (const s of segs) { ctx.moveTo(s[0], s[1]); ctx.lineTo(s[2], s[3]); } ctx.stroke(); };
+
+  function logWall(ctx, x, y, w, h, lvl) {
+    ctx.fillStyle = '#7a5434'; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(40,26,14,0.55)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); for (let yy = y + 4.5; yy < y + h; yy += 4.5) { ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); } ctx.stroke();
+    ctx.fillStyle = 'rgba(255,220,170,0.08)'; ctx.fillRect(x, y, w, 2);
+    if (lvl >= 4) { ctx.fillStyle = '#d6cbb4'; ctx.fillRect(x, y, w, h * 0.45); ctx.strokeStyle = '#6b4a2b'; ctx.lineWidth = 1.6; ctx.strokeRect(x + 0.8, y + 0.8, w - 1.6, h * 0.45); ctx.beginPath(); ctx.moveTo(x + w / 3, y); ctx.lineTo(x + w / 3, y + h * 0.45); ctx.moveTo(x + 2 * w / 3, y); ctx.lineTo(x + 2 * w / 3, y + h * 0.45); ctx.stroke(); }
+  }
+  function foundation(ctx, w, lvl) {
+    if (lvl < 3) return;
+    ctx.fillStyle = '#6f6b66'; ctx.fillRect(-w / 2 - 2, -6, w + 4, 6);
+    ctx.fillStyle = '#86817b'; ctx.fillRect(-w / 2 - 2, -6, w + 4, 1.5);
+    ctx.strokeStyle = 'rgba(40,36,32,0.5)'; ctx.lineWidth = 0.6;
+    ctx.beginPath(); for (let xx = -w / 2 + 4; xx < w / 2; xx += 8) { ctx.moveTo(xx, -6); ctx.lineTo(xx, 0); } ctx.stroke();
+  }
+  function gableRoof(ctx, w, top, rh, color) {
+    ctx.fillStyle = U.shade(color, -0.25);
+    ctx.beginPath(); ctx.moveTo(-w / 2 - 6, top + 3); ctx.lineTo(w / 2 + 6, top + 3); ctx.lineTo(w / 2 - 8, top - rh); ctx.lineTo(-w / 2 + 8, top - rh); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(-w / 2 - 6, top + 3); ctx.lineTo(w / 2 + 6, top + 3); ctx.lineTo(w / 2 - 8, top - rh * 0.55); ctx.lineTo(-w / 2 + 8, top - rh * 0.55); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = U.rgba(U.shade(color, -0.45), 0.55); ctx.lineWidth = 0.7;
+    ctx.beginPath(); for (let xx = -w / 2; xx <= w / 2; xx += 6) { ctx.moveTo(xx * 1.08, top + 3); ctx.lineTo(xx * 0.86, top - rh); } ctx.stroke();
+    ctx.strokeStyle = U.shade(color, -0.5); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(-w / 2 + 8, top - rh); ctx.lineTo(w / 2 - 8, top - rh); ctx.stroke();
+  }
+  function windowLit(ctx, x, y, s, lit) {
+    ctx.fillStyle = '#3a2614'; ctx.fillRect(x - s / 2 - 1.2, y - s / 2 - 1.2, s + 2.4, s + 2.4);
+    ctx.fillStyle = lit ? '#ffcf70' : '#2a2a30'; ctx.fillRect(x - s / 2, y - s / 2, s, s);
+    ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(x, y - s / 2); ctx.lineTo(x, y + s / 2); ctx.moveTo(x - s / 2, y); ctx.lineTo(x + s / 2, y); ctx.stroke();
+  }
+  function door(ctx, x, w, h) {
+    ctx.fillStyle = '#3a2614'; ctx.fillRect(x - w / 2 - 1.5, -h - 1.5, w + 3, h + 1.5);
+    ctx.fillStyle = '#5d3d22'; ctx.fillRect(x - w / 2, -h, w, h);
+    ctx.strokeStyle = 'rgba(30,18,8,0.6)'; ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.moveTo(x, -h); ctx.lineTo(x, 0); ctx.stroke();
+    ctx.fillStyle = '#c9a050'; ctx.beginPath(); ctx.arc(x + w * 0.3, -h * 0.5, 0.9, 0, TAU); ctx.fill();
+  }
+  function smoke(ctx, x, y, t, seed) {
+    for (let i = 0; i < 3; i++) {
+      const p = ((t * 0.35 + i / 3 + seed) % 1);
+      ctx.fillStyle = 'rgba(180,175,170,' + (0.35 * (1 - p)) + ')';
+      ctx.beginPath(); ctx.arc(x + Math.sin(t + i * 2 + seed * 9) * 4 + p * 6, y - p * 26, 2.5 + p * 5, 0, TAU); ctx.fill();
+    }
+  }
+
+  D.house = function (ctx, x, y, lvl, t, lit, seed) {
+    const w = 56 + lvl * 6, h = 24 + lvl * 2;
+    ctx.save(); ctx.translate(x, y);
+    shadow(ctx, w * 0.62, 10);
+    foundation(ctx, w, lvl);
+    const base = lvl >= 3 ? -6 : 0;
+    logWall(ctx, -w / 2, base - h, w, h, lvl);
+    if (lvl >= 5) { ctx.fillStyle = '#7f7a73'; ctx.fillRect(-w / 2, base - h * 0.4, w, h * 0.4); ctx.strokeStyle = 'rgba(40,36,32,0.5)'; ctx.lineWidth = 0.6; ctx.beginPath(); for (let xx = -w / 2 + 5; xx < w / 2; xx += 9) { ctx.moveTo(xx, base - h * 0.4); ctx.lineTo(xx, base); } ctx.stroke(); }
+    ctx.save(); ctx.translate(0, base); door(ctx, -w * 0.12, 11, 17); ctx.restore();
+    windowLit(ctx, w * 0.24, base - h * 0.55, 8, lit);
+    if (lvl >= 2) windowLit(ctx, -w * 0.36, base - h * 0.55, 7, lit);
+    if (lvl >= 2) {
+      ctx.fillStyle = '#6f6b66'; ctx.fillRect(w * 0.22, base - h - 26, 8, 18);
+      ctx.fillStyle = '#5a5650'; ctx.fillRect(w * 0.22 - 1, base - h - 27, 10, 3);
+      smoke(ctx, w * 0.22 + 4, base - h - 28, t, seed || 0);
+    }
+    gableRoof(ctx, w, base - h, 18 + lvl * 2, roofCol(lvl));
+    if (lvl >= 4) { ctx.fillStyle = '#6b8a3a'; ctx.fillRect(w * 0.18, base - h * 0.55 + 5, 12, 3); }
+    ctx.restore();
+  };
+
+  D.farm = function (ctx, x, y, lvl, si, t) {
+    const w = 72 + lvl * 8, d = 34 + lvl * 2;
+    ctx.save(); ctx.translate(x, y);
+    // soil
+    ctx.fillStyle = si === 1 ? '#c9cfd4' : '#5d4129';
+    ctx.beginPath(); ctx.moveTo(-w / 2, 12); ctx.lineTo(w / 2, 12); ctx.lineTo(w / 2 - 8, 12 - d); ctx.lineTo(-w / 2 + 8, 12 - d); ctx.closePath(); ctx.fill();
+    const rows = 3 + lvl;
+    for (let r = 0; r < rows; r++) {
+      const ry = 12 - d + (r + 0.6) * d / rows;
+      const inset = 8 * (1 - (ry - (12 - d)) / d);
+      ctx.strokeStyle = si === 1 ? '#aab3ba' : '#45301d'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-w / 2 + inset + 3, ry); ctx.lineTo(w / 2 - inset - 3, ry); ctx.stroke();
+      if (si === 1) continue;
+      for (let cx = -w / 2 + inset + 6; cx < w / 2 - inset - 4; cx += 7) {
+        const sway = Math.sin(t * 2 + cx * 0.3 + r) * 0.8;
+        if (si === 2) { ctx.fillStyle = '#6fb04a'; ctx.beginPath(); ctx.ellipse(cx, ry - 2, 1.6, 2.4, 0, 0, TAU); ctx.fill(); }
+        else {
+          const tall = si === 3 ? 9 : 7;
+          ctx.strokeStyle = si === 0 ? '#c9a43a' : '#4f8a2e'; ctx.lineWidth = 1.3;
+          ctx.beginPath(); ctx.moveTo(cx, ry); ctx.lineTo(cx + sway, ry - tall); ctx.stroke();
+          ctx.fillStyle = si === 0 ? '#e0bf55' : '#e8d65a';
+          ctx.beginPath(); ctx.ellipse(cx + sway, ry - tall, 1.3, 2.4, 0, 0, TAU); ctx.fill();
+        }
+      }
+    }
+    // fence
+    ctx.strokeStyle = '#7a5a38'; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let fx = -w / 2; fx <= w / 2 + 0.1; fx += w / 8) { ctx.moveTo(fx, 14); ctx.lineTo(fx, 7); }
+    ctx.moveTo(-w / 2, 9.5); ctx.lineTo(w / 2, 9.5);
+    ctx.moveTo(-w / 2, 14); ctx.lineTo(-w / 2 + 8, 12 - d); ctx.moveTo(w / 2, 14); ctx.lineTo(w / 2 - 8, 12 - d);
+    ctx.stroke();
+    if (lvl >= 2) { // tool shed
+      ctx.save(); ctx.translate(-w / 2 + 2, 12 - d + 2);
+      ctx.fillStyle = '#6b4a2b'; ctx.fillRect(-12, -16, 18, 16);
+      ctx.fillStyle = roofCol(lvl); ctx.beginPath(); ctx.moveTo(-14, -15); ctx.lineTo(8, -15); ctx.lineTo(4, -23); ctx.lineTo(-10, -23); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#3a2614'; ctx.fillRect(-6, -9, 6, 9);
+      ctx.restore();
+    }
+    if (lvl >= 3 && si !== 1) { // scarecrow
+      ctx.save(); ctx.translate(w * 0.18, 12 - d * 0.55);
+      ctx.strokeStyle = '#6b4a2b'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(0, -16); ctx.moveTo(-8, -10); ctx.lineTo(8, -10); ctx.stroke();
+      ctx.fillStyle = '#8a3b2e'; ctx.fillRect(-4, -13, 8, 9);
+      ctx.fillStyle = '#d9b77a'; ctx.beginPath(); ctx.arc(0, -17, 3, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#5a4630'; ctx.beginPath(); ctx.moveTo(-5, -18.5); ctx.lineTo(5, -18.5); ctx.lineTo(0, -23); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    if (lvl >= 4) { D.barrel(ctx, w / 2 - 4, 4); }
+    if (lvl >= 5) { // well
+      ctx.save(); ctx.translate(w / 2 - 22, 12 - d + 6);
+      ctx.fillStyle = '#77736d'; ctx.beginPath(); ctx.ellipse(0, 0, 7, 3, 0, 0, TAU); ctx.fill(); ctx.fillRect(-7, -6, 14, 6);
+      ctx.strokeStyle = '#5a3d24'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(-6, -16); ctx.moveTo(6, -6); ctx.lineTo(6, -16); ctx.moveTo(-8, -16); ctx.lineTo(8, -16); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  };
+
+  D.mill = function (ctx, x, y, lvl, wood, t) {
+    const w = 64 + lvl * 6;
+    ctx.save(); ctx.translate(x, y);
+    shadow(ctx, w * 0.6, 9);
+    foundation(ctx, w, lvl);
+    const base = lvl >= 3 ? -6 : 0, H = 30 + lvl * 2;
+    // back wall
+    ctx.fillStyle = '#5d3f25'; ctx.fillRect(-w / 2 + 3, base - H, w - 6, H * 0.75);
+    lines(ctx, 'rgba(30,18,8,0.4)', 0.7, [[-w / 2 + 3, base - H * 0.5, w / 2 - 3, base - H * 0.5]]);
+    // log stack inside
+    const n = U.clamp(Math.ceil(wood / 8), 1, 12);
+    let k = 0;
+    for (let r = 0; r < 3 && k < n; r++) for (let c = 0; c < 5 - r && k < n; c++, k++) {
+      const lx = -w / 2 + 12 + c * 7.6 + r * 3.8, ly = base - 5 - r * 6.4;
+      ctx.fillStyle = '#5a3d24'; ctx.beginPath(); ctx.arc(lx, ly, 3.8, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#c9955a'; ctx.beginPath(); ctx.arc(lx, ly, 2.8, 0, TAU); ctx.fill();
+    }
+    // sawhorse with a log
+    ctx.save(); ctx.translate(w * 0.2, base);
+    ctx.strokeStyle = '#6b4a2b'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-6, -9); ctx.lineTo(-2, 0); ctx.moveTo(4, 0); ctx.lineTo(8, -9); ctx.lineTo(12, 0); ctx.stroke();
+    ctx.fillStyle = '#7a5434'; D.rr(ctx, -12, -13, 26, 5, 2.5); ctx.fill();
+    ctx.strokeStyle = '#a9b0b6'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(2, -20); ctx.lineTo(4 + Math.sin(t * 6) * 2, -9); ctx.stroke();
+    ctx.restore();
+    // posts & roof
+    lines(ctx, '#5a3d24', 3, [[-w / 2, base, -w / 2, base - H], [w / 2, base, w / 2, base - H]]);
+    ctx.fillStyle = roofCol(lvl);
+    ctx.beginPath(); ctx.moveTo(-w / 2 - 6, base - H + 2); ctx.lineTo(w / 2 + 6, base - H + 2); ctx.lineTo(w / 2, base - H - 14); ctx.lineTo(-w / 2, base - H - 14); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = U.rgba(U.shade(roofCol(lvl), -0.45), 0.6); ctx.lineWidth = 0.7;
+    ctx.beginPath(); for (let xx = -w / 2; xx <= w / 2; xx += 6) { ctx.moveTo(xx, base - H + 2); ctx.lineTo(xx * 0.95, base - H - 14); } ctx.stroke();
+    // sign
+    ctx.fillStyle = '#7a5434'; ctx.fillRect(-12, base - H - 2, 24, 8);
+    lines(ctx, '#d8c4a2', 1.2, [[-6, base - H + 4, 6, base - H - 1], [-6, base - H - 1, 6, base - H + 4]]);
+    if (lvl >= 4) { ctx.fillStyle = '#5a3d24'; ctx.fillRect(-w / 2 - 14, base - 14, 12, 14); ctx.fillStyle = roofCol(lvl); ctx.fillRect(-w / 2 - 16, base - 18, 16, 4); }
+    ctx.restore();
+  };
+
+  D.quarry = function (ctx, x, y, lvl, stone, t) {
+    const w = 64 + lvl * 6;
+    ctx.save(); ctx.translate(x, y);
+    shadow(ctx, w * 0.6, 9);
+    // gravel yard
+    ctx.fillStyle = '#7c776f'; ctx.beginPath(); ctx.ellipse(0, -2, w / 2, 12, 0, 0, TAU); ctx.fill();
+    // stacked stone blocks
+    const n = U.clamp(Math.ceil(stone / 8), 1, 12);
+    let k = 0;
+    for (let r = 0; r < 3 && k < n; r++) for (let c = 0; c < 5 - r && k < n; c++, k++) {
+      const bx = -w / 2 + 8 + c * 10 + r * 5, by = -4 - r * 7;
+      ctx.fillStyle = ['#9a958d', '#8a857e', '#a7a39b'][(c + r) % 3]; ctx.fillRect(bx, by - 7, 9, 7);
+      ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(bx, by - 7, 9, 1.4);
+    }
+    // hut
+    ctx.save(); ctx.translate(w * 0.2, -2);
+    ctx.fillStyle = '#6b4a2b'; ctx.fillRect(-12, -20, 24, 20);
+    ctx.fillStyle = '#3a2614'; ctx.fillRect(-4, -12, 8, 12);
+    ctx.fillStyle = roofCol(lvl); ctx.beginPath(); ctx.moveTo(-15, -19); ctx.lineTo(15, -19); ctx.lineTo(10, -29); ctx.lineTo(-10, -29); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    if (lvl >= 2) { // crane / pulley
+      ctx.save(); ctx.translate(-w * 0.1, -6);
+      lines(ctx, '#5a3d24', 2.2, [[-10, 0, 0, -38], [10, 0, 0, -38], [0, -38, 18, -32]]);
+      ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(16, -32); ctx.lineTo(16, -16 + Math.sin(t * 1.5) * 3); ctx.stroke();
+      ctx.fillStyle = '#8a857e'; ctx.fillRect(12, -16 + Math.sin(t * 1.5) * 3, 8, 6);
+      ctx.restore();
+    }
+    if (lvl >= 3) { // ore cart
+      ctx.save(); ctx.translate(-w * 0.35, 6);
+      ctx.fillStyle = '#5a5650'; ctx.beginPath(); ctx.moveTo(-9, -10); ctx.lineTo(9, -10); ctx.lineTo(7, -2); ctx.lineTo(-7, -2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#a7a39b'; ctx.beginPath(); ctx.arc(-3, -11, 3, 0, TAU); ctx.arc(3, -11.5, 3.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#2a2a2a'; ctx.beginPath(); ctx.arc(-5, -1, 2, 0, TAU); ctx.arc(5, -1, 2, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    if (lvl >= 5) { ctx.fillStyle = '#9a2a22'; ctx.fillRect(w * 0.2 + 10, -48, 8, 5); lines(ctx, '#3a2a1a', 1, [[w * 0.2 + 10, -29, w * 0.2 + 10, -48]]); }
+    ctx.restore();
+  };
+
+  D.storehouse = function (ctx, x, y, lvl, t) {
+    const w = 66 + lvl * 7, h = 30 + lvl * 3;
+    ctx.save(); ctx.translate(x, y);
+    shadow(ctx, w * 0.62, 10);
+    foundation(ctx, w, lvl);
+    const base = lvl >= 3 ? -6 : 0;
+    ctx.fillStyle = '#8a3b2e'; ctx.fillRect(-w / 2, base - h, w, h);
+    ctx.strokeStyle = 'rgba(40,14,8,0.45)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); for (let xx = -w / 2 + 5; xx < w / 2; xx += 5) { ctx.moveTo(xx, base - h); ctx.lineTo(xx, base); } ctx.stroke();
+    // big double door
+    ctx.fillStyle = '#5a2a20'; ctx.fillRect(-13, base - h * 0.72, 26, h * 0.72);
+    lines(ctx, '#e8dcc4', 1.4, [[-13, base - h * 0.72, 13, base], [13, base - h * 0.72, -13, base], [0, base - h * 0.72, 0, base]]);
+    ctx.strokeStyle = '#e8dcc4'; ctx.lineWidth = 1.4; ctx.strokeRect(-13, base - h * 0.72, 26, h * 0.72);
+    // roof
+    gableRoof(ctx, w, base - h, 20 + lvl * 2, lvl >= 3 ? '#4d4d55' : '#6b4a3a');
+    // hay door
+    ctx.fillStyle = '#5a2a20'; ctx.fillRect(-6, base - h - 12, 12, 9);
+    // crates and barrels around
+    D.crates(ctx, -w / 2 - 6, 6);
+    if (lvl >= 2) D.barrel(ctx, w / 2 + 6, 6);
+    if (lvl >= 4) D.barrel(ctx, w / 2 - 6, 10);
+    ctx.restore();
+  };
+
+  D.workshop = function (ctx, x, y, lvl, t, working) {
+    const w = 62 + lvl * 6, H = 28 + lvl * 2;
+    ctx.save(); ctx.translate(x, y);
+    shadow(ctx, w * 0.6, 9);
+    foundation(ctx, w, lvl);
+    const base = lvl >= 3 ? -6 : 0;
+    ctx.fillStyle = '#5d3f25'; ctx.fillRect(-w / 2 + 3, base - H, w - 6, H);
+    // tools on the wall
+    lines(ctx, '#a9b0b6', 1.2, [[-w / 2 + 12, base - H + 6, -w / 2 + 12, base - H + 16], [-w / 2 + 18, base - H + 6, -w / 2 + 20, base - H + 15]]);
+    ctx.fillStyle = '#a9b0b6'; ctx.fillRect(-w / 2 + 9, base - H + 5, 6, 3);
+    // workbench with arrows
+    ctx.fillStyle = '#7a5434'; ctx.fillRect(-w / 2 + 8, base - 12, w * 0.5, 4);
+    lines(ctx, '#5a3d24', 1.6, [[-w / 2 + 10, base - 8, -w / 2 + 10, base], [-w / 2 + 6 + w * 0.5, base - 8, -w / 2 + 6 + w * 0.5, base]]);
+    ctx.strokeStyle = '#d9c39a'; ctx.lineWidth = 0.8; ctx.beginPath();
+    for (let i = 0; i < 5; i++) { ctx.moveTo(-w / 2 + 12 + i * 3, base - 12); ctx.lineTo(-w / 2 + 14 + i * 3, base - 22); }
+    ctx.stroke();
+    // forge
+    if (lvl >= 3) {
+      ctx.fillStyle = '#6f6b66'; ctx.fillRect(w * 0.12, base - 16, 18, 16);
+      ctx.fillStyle = working ? '#ff8a2a' : '#5a2a1a'; ctx.fillRect(w * 0.12 + 4, base - 12, 10, 5);
+      ctx.fillStyle = '#5a5650'; ctx.fillRect(w * 0.12 + 5, base - H - 20, 8, H + 4);
+      if (working) smoke(ctx, w * 0.12 + 9, base - H - 22, t, 0.3);
+    }
+    // anvil
+    ctx.fillStyle = '#3b3f44'; ctx.beginPath(); ctx.moveTo(w * 0.32, base - 8); ctx.lineTo(w * 0.32 + 14, base - 8); ctx.lineTo(w * 0.32 + 10, base - 4); ctx.lineTo(w * 0.32 + 4, base - 4); ctx.closePath(); ctx.fill(); ctx.fillRect(w * 0.32 + 5, base - 4, 4, 4);
+    lines(ctx, '#5a3d24', 3, [[-w / 2, base, -w / 2, base - H - 2], [w / 2, base, w / 2, base - H - 2]]);
+    ctx.fillStyle = roofCol(lvl);
+    ctx.beginPath(); ctx.moveTo(-w / 2 - 6, base - H); ctx.lineTo(w / 2 + 6, base - H); ctx.lineTo(w / 2, base - H - 15); ctx.lineTo(-w / 2, base - H - 15); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  };
+
+  D.armoryB = function (ctx, x, y, lvl, t) {
+    const w = 60 + lvl * 6, h = 28 + lvl * 2;
+    ctx.save(); ctx.translate(x, y);
+    shadow(ctx, w * 0.6, 9);
+    ctx.fillStyle = '#7a756e'; ctx.fillRect(-w / 2, -h, w, h);
+    ctx.strokeStyle = 'rgba(40,36,32,0.5)'; ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    for (let yy = -h + 6; yy < 0; yy += 6) { ctx.moveTo(-w / 2, yy); ctx.lineTo(w / 2, yy); }
+    for (let r = 0, yy = -h; yy < 0; yy += 6, r++) for (let xx = -w / 2 + (r % 2 ? 5 : 0); xx < w / 2; xx += 10) { ctx.moveTo(xx, yy); ctx.lineTo(xx, Math.min(0, yy + 6)); }
+    ctx.stroke();
+    door(ctx, 0, 13, 18);
+    gableRoof(ctx, w, -h, 16 + lvl * 2, lvl >= 3 ? '#4d4d55' : '#6b4a3a');
+    // crossed swords sign
+    ctx.save(); ctx.translate(0, -h + 6);
+    ctx.fillStyle = '#5d3d22'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, TAU); ctx.fill();
+    lines(ctx, '#d8dde2', 1.3, [[-4, 4, 4, -4], [4, 4, -4, -4]]);
+    ctx.restore();
+    D.armory(ctx, w / 2 + 14, 4, lvl);
+    if (lvl >= 3) { lines(ctx, '#3a2a1a', 1, [[-w / 2 + 4, -h - 4, -w / 2 + 4, -h - 26]]); ctx.fillStyle = '#9a2a22'; ctx.beginPath(); ctx.moveTo(-w / 2 + 4, -h - 26); ctx.lineTo(-w / 2 + 16 + Math.sin(t * 4) * 1.5, -h - 23); ctx.lineTo(-w / 2 + 4, -h - 19); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  };
+
+  D.infirmary = function (ctx, x, y, lvl, t, lit) {
+    const w = 60 + lvl * 7;
+    ctx.save(); ctx.translate(x, y);
+    shadow(ctx, w * 0.62, 10);
+    if (lvl >= 3) {
+      const h = 26 + lvl * 2;
+      foundation(ctx, w, lvl);
+      ctx.fillStyle = '#e8e2d4'; ctx.fillRect(-w / 2, -6 - h, w, h);
+      lines(ctx, 'rgba(120,110,90,0.4)', 0.7, [[-w / 2, -6 - h * 0.5, w / 2, -6 - h * 0.5]]);
+      ctx.save(); ctx.translate(0, -6); door(ctx, 0, 12, 17); ctx.restore();
+      windowLit(ctx, -w * 0.3, -6 - h * 0.55, 8, lit); windowLit(ctx, w * 0.3, -6 - h * 0.55, 8, lit);
+      gableRoof(ctx, w, -6 - h, 18 + lvl * 2, '#6b4a3a');
+      ctx.fillStyle = '#c62f2f'; ctx.fillRect(-2.5, -6 - h - 14, 5, 13); ctx.fillRect(-6.5, -6 - h - 10, 13, 5);
+    } else {
+      const k = w / 50;
+      ctx.scale(k, k);
+      ctx.fillStyle = '#b8b0a0';
+      ctx.beginPath(); ctx.moveTo(-25, 0); ctx.lineTo(0, -28); ctx.lineTo(0, -46); ctx.lineTo(-25, -18); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e8e2d4';
+      ctx.beginPath(); ctx.moveTo(25, 0); ctx.lineTo(0, -28); ctx.lineTo(0, -46); ctx.lineTo(25, -18); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d8d0c0';
+      ctx.beginPath(); ctx.moveTo(-25, 0); ctx.lineTo(0, -28); ctx.lineTo(25, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = lit ? '#5a4020' : '#1a120c';
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(0, -17); ctx.lineTo(8, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#c62f2f'; ctx.fillRect(9, -16, 3, 9); ctx.fillRect(6, -13, 9, 3);
+    }
+    ctx.restore();
+  };
+
+  D.scout = function (ctx, x, y, lvl, t) {
+    const w = 46 + lvl * 5;
+    ctx.save(); ctx.translate(x, y);
+    shadow(ctx, w * 0.62, 9);
+    ctx.fillStyle = '#6b4a2b'; ctx.fillRect(-w / 2, -22, w * 0.6, 22);
+    door(ctx, -w / 2 + w * 0.3, 9, 14);
+    ctx.fillStyle = roofCol(lvl); ctx.beginPath(); ctx.moveTo(-w / 2 - 4, -21); ctx.lineTo(-w / 2 + w * 0.6 + 4, -21); ctx.lineTo(-w / 2 + w * 0.5, -33); ctx.lineTo(-w / 2 + w * 0.1, -33); ctx.closePath(); ctx.fill();
+    // lookout pole with flag
+    const ph = 50 + lvl * 6;
+    lines(ctx, '#5a3d24', 2.4, [[w * 0.3, 0, w * 0.3, -ph]]);
+    lines(ctx, '#5a3d24', 1.2, [[w * 0.3 - 6, 0, w * 0.3, -ph * 0.5], [w * 0.3 + 6, 0, w * 0.3, -ph * 0.5]]);
+    ctx.fillStyle = '#2f5d50';
+    ctx.beginPath(); ctx.moveTo(w * 0.3, -ph); ctx.lineTo(w * 0.3 + 14 + Math.sin(t * 4) * 2, -ph + 4); ctx.lineTo(w * 0.3, -ph + 9); ctx.closePath(); ctx.fill();
+    if (lvl >= 2) { ctx.fillStyle = '#7a5434'; ctx.fillRect(w * 0.3 - 7, -ph * 0.62, 14, 3); }
+    // map table and packs
+    ctx.fillStyle = '#7a5434'; ctx.fillRect(w * 0.02, -9, 14, 3);
+    ctx.fillStyle = '#e8dcc4'; ctx.fillRect(w * 0.02 + 2, -11, 10, 2);
+    ctx.fillStyle = '#5a4630'; D.rr(ctx, -w / 2 - 8, -9, 7, 9, 2); ctx.fill();
+    ctx.restore();
+  };
+
+  // wooden scaffolding shown while something is being built or upgraded
+  D.scaffold = function (ctx, x, y, w, h, prog, newBuild) {
+    ctx.save(); ctx.translate(x, y);
+    if (newBuild) {
+      ctx.fillStyle = 'rgba(90,64,40,0.55)'; ctx.fillRect(-w / 2, -4, w, 4);
+      ctx.fillStyle = 'rgba(122,84,52,0.9)';
+      const fh = h * U.clamp(prog, 0, 1);
+      ctx.fillRect(-w / 2 + 4, -fh, w - 8, fh);
+      ctx.strokeStyle = 'rgba(40,26,14,0.55)'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); for (let yy = -4.5; yy > -fh; yy -= 4.5) { ctx.moveTo(-w / 2 + 4, yy); ctx.lineTo(w / 2 - 4, yy); } ctx.stroke();
+    }
+    ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (const px of [-w / 2 - 3, 0, w / 2 + 3]) { ctx.moveTo(px, 2); ctx.lineTo(px, -h - 10); }
+    for (let yy = -10; yy > -h - 10; yy -= 14) { ctx.moveTo(-w / 2 - 5, yy); ctx.lineTo(w / 2 + 5, yy); }
+    ctx.moveTo(-w / 2 - 3, 0); ctx.lineTo(0, -h * 0.6); ctx.moveTo(w / 2 + 3, 0); ctx.lineTo(0, -h * 0.6);
+    ctx.stroke();
+    ctx.fillStyle = '#a07a4a';
+    for (let yy = -10; yy > -h - 10; yy -= 28) ctx.fillRect(-w / 2 - 5, yy - 1.5, w + 10, 3);
+    ctx.restore();
+  };
+
+  // the gate in the south wall; open in daytime, closed at night
+  D.gate = function (ctx, x, y, lvl, open, dmg, broken, t) {
+    const half = 70, H = 34 + lvl * 3;
+    ctx.save(); ctx.translate(x, y);
+    shadow(ctx, half + 14, 7, 0);
+    const postC = lvl >= 5 ? '#7a756e' : '#5a3d24';
+    const post = (px, wd) => {
+      ctx.fillStyle = postC; ctx.fillRect(px - wd / 2, -H - 12, wd, H + 12);
+      ctx.fillStyle = U.shade(postC, 0.15); ctx.fillRect(px - wd / 2, -H - 12, wd * 0.35, H + 12);
+      ctx.fillStyle = lvl >= 4 ? '#8d939a' : U.shade(postC, 0.25);
+      ctx.beginPath(); ctx.moveTo(px - wd / 2 - 1, -H - 12); ctx.lineTo(px, -H - 22); ctx.lineTo(px + wd / 2 + 1, -H - 12); ctx.closePath(); ctx.fill();
+    };
+    // doors
+    const doorC = U.mix('#7a5434', '#3b2a1c', Math.min(0.7, dmg * 0.7));
+    const leaf = (sx, dir) => {
+      if (broken) {
+        ctx.fillStyle = '#3e2c1d';
+        ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, -10); ctx.lineTo(sx + dir * 20, -16); ctx.lineTo(sx + dir * 34, -6); ctx.lineTo(sx + dir * 40, 0); ctx.closePath(); ctx.fill();
+        return;
+      }
+      const wd = open ? 12 : half - 6;
+      ctx.fillStyle = doorC; ctx.fillRect(dir > 0 ? sx : sx - wd, -H, wd, H);
+      ctx.strokeStyle = 'rgba(30,18,8,0.55)'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); for (let k = 1; k < 6; k++) { const xx = dir > 0 ? sx + wd * k / 6 : sx - wd * k / 6; ctx.moveTo(xx, -H); ctx.lineTo(xx, 0); } ctx.stroke();
+      if (!open) {
+        ctx.strokeStyle = lvl >= 3 ? '#5d6166' : '#5a3d24'; ctx.lineWidth = 2.6;
+        ctx.beginPath(); ctx.moveTo(dir > 0 ? sx : sx - wd, -H * 0.25); ctx.lineTo(dir > 0 ? sx + wd : sx, -H * 0.25); ctx.moveTo(dir > 0 ? sx : sx - wd, -H * 0.75); ctx.lineTo(dir > 0 ? sx + wd : sx, -H * 0.75); ctx.stroke();
+        ctx.strokeStyle = U.shade(doorC, -0.3); ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(dir > 0 ? sx : sx - wd, -H * 0.25); ctx.lineTo(dir > 0 ? sx + wd : sx, -H * 0.75); ctx.stroke();
+      }
+    };
+    leaf(-half + 6, 1);
+    leaf(half - 6, -1);
+    post(-half, 12); post(half, 12);
+    // crossbeam and roof
+    ctx.fillStyle = '#5a3d24'; ctx.fillRect(-half - 6, -H - 14, half * 2 + 12, 6);
+    if (lvl >= 2) {
+      ctx.fillStyle = lvl >= 4 ? '#4d4d55' : '#8a7240';
+      ctx.beginPath(); ctx.moveTo(-half - 12, -H - 12); ctx.lineTo(half + 12, -H - 12); ctx.lineTo(half - 4, -H - 26); ctx.lineTo(-half + 4, -H - 26); ctx.closePath(); ctx.fill();
+    }
+    // lanterns
+    for (const sx of [-half, half]) {
+      ctx.fillStyle = '#3a2a1a'; ctx.fillRect(sx - 2, -H - 6, 4, 6);
+      ctx.fillStyle = '#ffcf70'; ctx.fillRect(sx - 1.4, -H - 5, 2.8, 3.6);
+    }
+    ctx.restore();
+  };
+
+  D.rock = function (ctx, x, y, k, shake, seed) {
+    ctx.save(); ctx.translate(x + (shake > 0 ? Math.sin(shake * 80) * 1.2 : 0), y); ctx.scale(k, k);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(4, 2, 24, 7, 0, 0, TAU); ctx.fill();
+    const blob = (bx, by, r, c) => {
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.moveTo(bx - r, by); ctx.quadraticCurveTo(bx - r, by - r * 1.2, bx - r * 0.2, by - r * 1.3); ctx.quadraticCurveTo(bx + r * 0.9, by - r * 1.2, bx + r, by); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.beginPath(); ctx.ellipse(bx - r * 0.3, by - r * 0.95, r * 0.35, r * 0.18, -0.3, 0, TAU); ctx.fill();
+    };
+    blob(-9, 1, 10, '#7c776f');
+    blob(8, 2, 9, '#6e6a63');
+    blob(0, -2, 13, '#8a857e');
+    ctx.strokeStyle = 'rgba(40,36,32,0.5)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-3, -12); ctx.lineTo(1, -6); ctx.lineTo(-1, -2); ctx.stroke();
+    ctx.fillStyle = 'rgba(90,120,60,0.6)'; ctx.beginPath(); ctx.ellipse(-12, -1, 4, 1.6, 0, 0, TAU); ctx.fill();
+    ctx.restore();
+  };
+
+  // what a worker carries on the shoulder
+  D.load = function (ctx, kind, x, y, fl) {
+    ctx.save(); ctx.translate(x, y);
+    if (kind === 'wood') {
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = col('#6b4a2b', fl); D.rr(ctx, -13 + i * 1.5, -i * 3.6, 24, 4, 2); ctx.fill();
+        ctx.fillStyle = col('#c9955a', fl); ctx.beginPath(); ctx.ellipse(11 + i * 1.5, 2 - i * 3.6, 1.6, 2, 0, 0, TAU); ctx.fill();
+      }
+    } else if (kind === 'stone') {
+      ctx.fillStyle = col('#6a5a44', fl); D.rr(ctx, -8, -8, 16, 11, 4); ctx.fill();
+      ctx.fillStyle = col('#9a958d', fl); ctx.beginPath(); ctx.arc(-3, -8, 3.4, 0, TAU); ctx.arc(3, -9, 3.8, 0, TAU); ctx.fill();
+    } else {
+      ctx.fillStyle = col('#5a4630', fl); D.rr(ctx, -7, -9, 14, 12, 4); ctx.fill();
+      ctx.fillStyle = col('#46361f', fl); ctx.fillRect(-7, -4, 14, 1.6);
+    }
     ctx.restore();
   };
 

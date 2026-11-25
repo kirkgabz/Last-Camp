@@ -40,26 +40,27 @@ Note: the backend doesn't send email, so there is no "forgot password" reset yet
 
 ## How to play
 
-- **Day:** give each survivor a job: chop wood, hunt, fletch arrows, scavenge ruins, or rest.
-- **Dusk:** spend resources on the fire, wall repairs, watchtowers, spike traps, tents, the armory and upgrades.
-- **Night:** the dead attack. Click a survivor, then click the ground to move them or a watchtower to station them.
-  Click the fire or press **F** to add wood. **If the fire goes out, the run ends.**
-- Every 3 nights you pick a perk. Every 10th night a boss comes. Seasons change every 7 days.
-- Dying gives you **embers**. Spend them in the main menu on permanent upgrades.
+- **Time runs on its own clock.** Day 06:00–18:00 · dusk 18:00–20:00 · **night 20:00–05:00** · dawn. Pause or speed up with ❚❚ / 1× 2× 3×.
+- **👥 Tasks:** buildings only work while people are assigned to them. Farms grow food, the Lumber Mill sends woodcutters out to chop trees, the Stone Quarry mines rock, the Workshop makes arrows, the Armory boosts weapons, the Infirmary heals, and the Scout Post goes on expeditions. The **Construction crew** builds, upgrades and repairs.
+- **🎭 Roles:** each role is 50% better at one job (Farmer, Lumberjack, Miner, Builder, Medic, Scavenger, Archer, Fighter).
+- **🔨 Build:** pick a building, then click a highlighted spot. Click any building to see its stats, staff it and upgrade it (levels 1–5). Big upgrades need stone and a Storehouse.
+- **🏠 Houses** decide how many people can live in camp. Strangers can only join when there is a free bed.
+- **Night:** the dead arrive at random, from every direction. While the palisade stands they can only claw at it. Click a survivor, then the ground (or an archer tower) to give orders. If the fire goes out at night, the run ends. The fire keeper auto-feeds it from the woodpile (you can switch that off).
+- Every 3 nights you pick a perk. Dying gives **embers** for permanent upgrades.
 
-Keys: `F` feed the fire · `Space` pause · `1` `2` `3` game speed · `M` sound · `Esc` deselect
+Controls: drag to pan · scroll to zoom · `WASD`/arrows pan · `C` re-centre · `Space` pause · `1` `2` `3` speed · `T` tasks · `R` roles · `B` build · `L` log · `F` add wood · `M` sound · `Esc` cancel
 
-Progress saves automatically at the start of each day and dusk, on this device and to the player's account when signed in.
+The game saves on this device at 06:00, 12:00, 18:00, after building or assignment changes, and when you leave the page. It also saves to your account when you're signed in.
 
 ## Code layout
 
 | File | Purpose |
 |---|---|
 | `js/util.js` | helpers, safe storage, synthesized sound effects |
-| `js/data.js` | all tuning numbers: roles, enemies, perks, events, upgrades |
+| `js/data.js` | all tuning numbers: roles, buildings and their per-level stats, enemies, perks, events |
 | `js/game.js` | run state, stats, camp geometry, save/load |
-| `js/day.js` | day jobs, events, dusk building |
-| `js/night.js` | night combat simulation and AI |
+| `js/town.js` | the clock, daily schedule, workers (chopping, mining, farming…), construction |
+| `js/night.js` | night defence: random attackers, survivor combat AI |
 | `js/draw.js` | procedural drawing of people, creatures and buildings |
 | `js/render.js` | scene rendering, lighting, particles, weather |
 | `js/ui.js` | menus, panels, modals |
@@ -68,4 +69,4 @@ Progress saves automatically at the start of each day and dusk, on this device a
 | `api/` | backend: `auth.js`, `save.js`, `_lib/db.js` (Neon / local PGlite), `_lib/http.js` |
 | `dev-server.mjs` | local server for `npm run dev` |
 
-To rebalance the game, start with `js/data.js` (`LC.ENEMIES`, `LC.ROLES`) and `N.budget` in `js/night.js`.
+To rebalance the game, start with `js/data.js` (`LC.BUILDINGS`, `LC.ENEMIES`, `LC.ROLES`) and `N.budget` in `js/night.js`.

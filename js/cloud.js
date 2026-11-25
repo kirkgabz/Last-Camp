@@ -85,6 +85,17 @@
     window.addEventListener('online', () => { if (Cloud.pending) Cloud.push(); });
   };
 
+  // when the page is closed or hidden, send any unsent save right away (the request outlives the page)
+  Cloud.flush = function () {
+    if (!Cloud.user || API_BASE === null || !U.store.get('lastcamp.unsynced.' + Cloud.user.id, false)) return;
+    const C = LC.C;
+    const body = JSON.stringify({ run: U.store.get(Cloud.key(C.SAVE_KEY), null), meta: U.store.get(Cloud.key(C.META_KEY), {}) || {} });
+    if (body.length > 60000) return; // too big for a keep-alive request; it uploads on the next visit instead
+    try {
+      fetch(API_BASE + '/api/save', { method: 'PUT', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() }, body });
+    } catch (e) { /* uploads on the next visit */ }
+  };
+
   function signedIn(data) {
     U.store.set(TOKEN_KEY, data.token);
     U.store.set(USER_KEY, { id: data.user.id, email: data.user.email });
