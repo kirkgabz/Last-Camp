@@ -27,13 +27,14 @@
   N.start = function (run) {
     const n = run.night;
     const st = {
-      t: 0, len: C.NIGHT_LEN, enemies: [], proj: [], corpses: [], queue: [], qi: 0, nextId: 1,
+      t: 0, len: G.nightLen(run), enemies: [], proj: [], corpses: [], queue: [], qi: 0, nextId: 1,
       kills: 0, lost: [], dawn: false, warnT: 0, ammoWarnT: 0, breachT: 0, boss: false,
       hpMul: 1 + 0.07 * (n - 1) + 0.2 * Math.floor((n - 1) / 28),
       dmgMul: 1 + 0.04 * (n - 1),
     };
     st.threat = N.forecast(run);
-    let budget = N.budget(run) * U.rand(0.8, 1.25);
+    // a shorter night brings proportionally fewer attackers, so nights are not more crowded
+    let budget = N.budget(run) * U.rand(0.8, 1.25) * (st.len / C.NIGHT_LEN);
     const pool = [{ w: 6, v: 'walker' }];
     if (n >= 3) pool.push({ w: 3 + n * 0.08, v: 'runner' });
     if (n >= 5) pool.push({ w: 1.2, v: 'wolf' });

@@ -202,8 +202,12 @@
     const s = G.season(run).idx;
     return 0.85 * (s === 1 ? 1.25 : s === 3 ? 0.9 : 1) * (G.has(run, 'longburn') ? 0.8 : 1);
   };
+  // real seconds per game hour: for the first 50 days daytime hours last longer and night hours pass quicker
+  G.isDayHour = (h) => h >= C.DAY_START && h < C.NIGHT_START;
+  G.hourLen = (run) => (run.night <= C.EARLY_DAYS ? (G.isDayHour(G.hour(run)) ? C.DAY_HOUR_EARLY : C.NIGHT_HOUR_EARLY) : C.HOUR);
+  G.nightLen = (run) => (24 - C.NIGHT_START + C.DAWN) * (run.night <= C.EARLY_DAYS ? C.NIGHT_HOUR_EARLY : C.HOUR);
   // wood to keep back so the fire lasts the night
-  G.fireReserve = (run) => Math.max(0, Math.ceil((G.burnRate(run) * C.NIGHT_LEN - run.fireFuel * 0.5) / C.FUEL_PER_WOOD)) + 3;
+  G.fireReserve = (run) => Math.max(0, Math.ceil((G.burnRate(run) * G.nightLen(run) - run.fireFuel * 0.5) / C.FUEL_PER_WOOD)) + 3;
   G.foodNeed = (run) => {
     const n = G.alive(run).length;
     return G.has(run, 'rationing') ? Math.ceil(n * 0.7) : n;

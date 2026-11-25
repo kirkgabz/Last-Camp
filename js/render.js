@@ -580,7 +580,7 @@
     const z = R.cam.z;
     const occ = R.houseOccupancy(run);
     const builders = run.survivors.some((s) => s.alive && s.task === 'build');
-    for (const b of (S.screen === 'menu' ? [] : run.buildings)) {
+    for (const b of (S.screen === 'menu' || (LC.UI && LC.UI.prefs && LC.UI.prefs.labels === false) ? [] : run.buildings)) {
       const top = R.topOf(b);
       if (!R.onScreen(top.x, top.y, 40)) continue;
       const sp = R.w2s(top.x, top.y);

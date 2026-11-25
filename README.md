@@ -51,7 +51,7 @@ Note: the backend doesn't send email, so there is no "forgot password" reset yet
 
 ## How to play
 
-- **Time runs on its own clock.** Day 06:00–18:00 · dusk 18:00–20:00 · **night 20:00–05:00** · dawn. Pause or speed up with ❚❚ / 1× 2× 3×.
+- **Time runs on its own clock.** Day 06:00–18:00 · dusk 18:00–20:00 · **night 20:00–05:00** · dawn. Up to day 50 the days last longer (about 2 min 20 s including dusk) and nights pass quicker (about 1 min). Pause with ❚❚; game speed, sound and other options are in ⚙️ Settings.
 - **👥 Tasks:** buildings only work while people are assigned to them. Farms grow food, the Lumber Mill sends woodcutters out to chop trees, the Stone Quarry mines rock, the Workshop makes arrows, the Armory boosts weapons, the Infirmary heals, and the Scout Post goes on expeditions. The **Construction crew** builds, upgrades and repairs.
 - **🎭 Roles:** each role is 50% better at one job (Farmer, Lumberjack, Miner, Builder, Medic, Scavenger, Archer, Fighter).
 - **🔨 Build:** pick a building, then click a highlighted spot. Click any building to see its stats, staff it and upgrade it (levels 1–5). Big upgrades need stone and a Storehouse.

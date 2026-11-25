@@ -9,7 +9,9 @@
     CX: 900, CY: 590, RX: 470, RY: 300, // camp centre and palisade ellipse
     SEG: 28, LOGS: 7,                // wall segments, logs per segment
     GATE_SEGS: [6, 7],               // the two segments at the south form the gate
-    HOUR: 8,                         // real seconds per game hour at 1x speed
+    HOUR: 8,                         // real seconds per game hour at 1x speed (after day 50)
+    EARLY_DAYS: 50,                  // up to this day, days run longer and nights shorter
+    DAY_HOUR_EARLY: 10, NIGHT_HOUR_EARLY: 6.5,
     DAY_START: 6, DUSK: 18, NIGHT_START: 20, DAWN: 5,
     FUEL_PER_WOOD: 20,
     MAX_LVL: 10,                     // survivor level cap

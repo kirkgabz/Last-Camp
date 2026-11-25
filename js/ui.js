@@ -48,16 +48,13 @@
         </div>
       </div>
       <div id="toolbar" class="panel hidden">
-        <button class="btn icon" data-act="pause" title="Pause (Space)">❚❚</button>
-        <button class="btn icon" data-act="speed" data-v="1" title="Normal speed (1)">1×</button>
-        <button class="btn icon" data-act="speed" data-v="2" title="Fast (2)">2×</button>
-        <button class="btn icon" data-act="speed" data-v="3" title="Faster (3)">3×</button>
+        <button class="btn tool" data-act="pause" title="Pause (Space)"><span class="pz">❚❚</span><small>Pause</small></button>
+        <button class="btn tool" data-act="settings" title="Settings">⚙️<small>Settings</small></button>
         <span class="sep"></span>
         <button class="btn tool" data-act="drawer" data-v="tasks" title="Assign people to buildings (T)">👥<small>Tasks</small></button>
         <button class="btn tool" data-act="drawer" data-v="roles" title="Change people's roles (R)">🎭<small>Roles</small></button>
         <button class="btn tool" data-act="drawer" data-v="build" title="Construct buildings (B)">🔨<small>Build</small></button>
         <button class="btn tool" data-act="drawer" data-v="log" title="Camp log (L)">📜<small>Log</small></button>
-        <button class="btn tool" data-act="quit" title="Menu">☰<small>Menu</small></button>
       </div>
       <div id="firebar" class="panel hidden">
         <div class="fb-top"><span class="fb-label">🔥 CAMPFIRE</span><span id="fb-text"></span></div>
@@ -78,14 +75,15 @@
       <div id="toasts"></div>
       <div id="menu" class="hidden"></div>
       <div id="modal" class="hidden"><div id="modal-card" class="card"></div></div>
-      <button id="mute" class="btn icon" data-act="mute" title="Sound (M)">🔊</button>
+      <button id="menuSettings" class="btn icon" data-act="settings" title="Settings">⚙️</button>
     `;
     ui.addEventListener('click', onClick);
     ui.addEventListener('change', onChange);
+    ui.addEventListener('focusout', (e) => { if (e.target && e.target.tagName === 'SELECT') setTimeout(() => UI.refreshPanels(true), 0); });
     UI.syncMute();
   };
 
-  UI.syncMute = () => { const b = $('mute'); if (b) b.textContent = A.muted ? '🔇' : '🔊'; };
+  UI.syncMute = () => { const b = $('set-sound'); if (b) { b.textContent = A.muted ? '🔇 Off' : '🔊 On'; b.classList.toggle('on', !A.muted); } };
   UI.syncCloud = function () {
     const el = $('hud-cloud');
     if (!el) return;
@@ -119,6 +117,7 @@
         LC.Cloud.signOut().then(() => { S().meta = G.loadMeta(); UI.showMenu(); UI.toast('Signed out. Your camp is safe online.', 'neutral'); });
         break;
       case 'close': A.play('click'); closeModal(); break;
+      case 'prefFire': if (r) { r.autoFire = r.autoFire === false; G.save(r); A.play('click'); UI.showSettings(); } break;
       case 'buy': {
         const u = LC.META_UPG.find((x) => x.id === el.dataset.id);
         const m = S().meta, lvl = m.upg[u.id] || 0;
@@ -127,7 +126,24 @@
         break;
       }
       case 'pause': LC.Flow.togglePause(); break;
-      case 'speed': S().speed = +el.dataset.v; S().paused = false; A.play('click'); UI.syncSpeed(); break;
+      case 'speed': S().speed = +el.dataset.v; A.play('click'); UI.syncSpeed(); break;
+      case 'settings': A.play('click'); UI.showSettings(); break;
+      case 'pref': {
+        const k = el.dataset.k;
+        UI.prefs[k] = !UI.prefs[k];
+        U.store.set('lastcamp.prefs', UI.prefs);
+        A.play('click');
+        UI.showSettings();
+        break;
+      }
+      case 'fullscreen': {
+        const d = document.documentElement;
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        else if (d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => { if (screen.orientation && screen.orientation.lock && LC.App && LC.App.isTouch) screen.orientation.lock('landscape').catch(() => {}); }).catch(() => UI.toast('Fullscreen is not available here.', 'neutral'));
+        setTimeout(() => { if (UI.modalOpen()) UI.showSettings(); }, 400);
+        break;
+      }
+      case 'recenter': A.play('click'); LC.Render.resetCamera(); closeModal(); break;
       case 'drawer': A.play('click'); UI.toggleDrawer(el.dataset.v); break;
       case 'closeDrawer': A.play('click'); UI.closeDrawer(); break;
       case 'stoke': if (r) LC.Night.stoke(r); break;
@@ -214,18 +230,20 @@
       case 'hideHint': $('hint').classList.add('hidden'); if (r) r.flags.hintSeen = true; break;
       case 'quit':
         A.play('click');
+        closeModal();
         if (S().night) confirmBox('Leave the night?', 'Night progress is not saved. You will return to the last save (dusk at the latest).', 'Quit to menu', () => LC.Flow.toMenu());
         else { G.save(r); LC.Flow.toMenu(); }
         break;
       case 'menu': A.play('click'); closeModal(); LC.Flow.toMenu(); break;
       case 'again': A.play('click'); closeModal(); LC.Flow.newRun(); break;
-      case 'mute': A.setMuted(!A.muted); UI.syncMute(); break;
+      case 'mute': A.setMuted(!A.muted); A.init(); if (!A.muted) A.play('click'); UI.syncMute(); break;
       default: break;
     }
   }
 
   function onChange(e) {
     const el = e.target;
+    if (el.tagName === 'SELECT') setTimeout(() => { if (document.activeElement === el) el.blur(); UI.refreshPanels(true); }, 0);
     const r = run();
     if (!r || !el.dataset) return;
     if (el.dataset.assign !== undefined) {
@@ -304,6 +322,28 @@
     `;
   };
 
+  // ---------- settings ----------
+  UI.prefs = Object.assign({ labels: true }, U.store.get('lastcamp.prefs', {}) || {});
+  UI.showSettings = function () {
+    const st = S(), r = run(), inGame = st.screen === 'run' && r && r.phase === 'play';
+    const row = (label, desc, ctrl) => `<div class="set-row"><div><b>${label}</b><small>${desc}</small></div><div class="set-ctrl">${ctrl}</div></div>`;
+    const toggle = (on, act, extra) => `<button class="btn small toggle ${on ? 'on' : ''}" data-act="${act}" ${extra || ''}>${on ? 'On' : 'Off'}</button>`;
+    let html = '<h2>⚙️ Settings</h2><div class="settings">';
+    html += row('Sound', 'Sound effects for the fire, fights and building. (M)', `<button id="set-sound" class="btn small toggle ${A.muted ? '' : 'on'}" data-act="mute">${A.muted ? '🔇 Off' : '🔊 On'}</button>`);
+    if (inGame) {
+      html += row('Game speed', 'How fast time passes. (keys 1, 2, 3)', [1, 2, 3].map((v) => `<button class="btn small seg ${st.speed === v ? 'on' : ''}" data-act="speed" data-v="${v}">${['Normal', 'Fast', 'Faster'][v - 1]}</button>`).join(''));
+      html += row('Auto-feed the fire', 'A fire keeper tops up the fire from the woodpile at dusk and at night.', toggle(r.autoFire !== false, 'prefFire'));
+    }
+    html += row('Building labels', 'Show level badges, beds and workers above buildings.', toggle(UI.prefs.labels, 'pref', 'data-k="labels"'));
+    if (document.fullscreenEnabled || document.documentElement.webkitRequestFullscreen) html += row('Fullscreen', 'Fill the whole screen.', toggle(!!document.fullscreenElement, 'fullscreen'));
+    if (inGame) html += row('Camera', 'Jump back to the middle of the camp. (C)', '<button class="btn small" data-act="recenter">Re-center</button>');
+    html += '</div><div class="modal-foot">';
+    html += '<button class="btn" data-act="how">How to Play</button>';
+    if (inGame) html += '<button class="btn danger" data-act="quit">Save & quit to menu</button>';
+    html += '<button class="btn primary" data-act="close">Done</button></div>';
+    openModal(html);
+  };
+
   UI.showShop = function () {
     const m = S().meta;
     openModal(`
@@ -325,7 +365,7 @@
       <h2>How to Play</h2>
       <div class="how">
         <p><b>Goal.</b> Survive as many nights as you can. The game never ends, and the dead grow stronger every night.</p>
-        <p><b>🕒 Time flows on its own.</b> Day 06:00–18:00 · dusk 18:00–20:00 · <b>night 20:00–05:00</b> · dawn. Use ❚❚ / 1× 2× 3× to control the speed.</p>
+        <p><b>🕒 Time flows on its own.</b> Day 06:00–18:00 · dusk 18:00–20:00 · <b>night 20:00–05:00</b> · dawn. For the first 50 days the days run longer and the nights pass quicker. Pause with ❚❚; change the game speed and sound in ⚙️ Settings.</p>
         <p><b>👥 Tasks.</b> Every working building needs people to run it: Farms grow food, the Lumber Mill sends woodcutters to the forest, the Quarry mines stone, the Workshop makes arrows, the Armory sharpens weapons, the Infirmary heals and the Scout Post goes on expeditions. Put people on <b>Construction</b> to build and upgrade, and to repair the wall.</p>
         <p><b>🎭 Roles.</b> Each role is 50% better at one job (a Farmer on a Farm, a Lumberjack at the Mill…). Fighters and Archers are best at night.</p>
         <p><b>🔨 Build.</b> Choose a building, then click a highlighted spot. Click any building to see its stats, staff it and <b>upgrade</b> it (levels 1–5). Big upgrades need stone and a Storehouse.</p>
@@ -407,10 +447,13 @@
 
   UI.syncSpeed = function () {
     const st = S();
-    document.querySelectorAll('#toolbar [data-act="speed"]').forEach((b) => b.classList.toggle('on', !st.paused && +b.dataset.v === st.speed));
     const p = document.querySelector('#toolbar [data-act="pause"]');
-    if (p) p.classList.toggle('on', st.paused);
-    $('paused').classList.toggle('hidden', !(st.paused && st.screen === 'run'));
+    if (p) { p.classList.toggle('on', st.paused); p.querySelector('.pz').textContent = st.paused ? '▶' : '❚❚'; p.querySelector('small').textContent = st.paused ? 'Resume' : 'Pause'; }
+    document.querySelectorAll('[data-act="speed"]').forEach((b) => b.classList.toggle('on', +b.dataset.v === st.speed));
+    const pz = $('paused');
+    pz.classList.toggle('hidden', !(st.paused && st.screen === 'run'));
+    const hint = LC.App && LC.App.isTouch ? 'Tap ▶ Resume to continue' : 'Press Space to continue';
+    if (pz.lastChild.textContent !== hint) pz.lastChild.textContent = hint;
   };
 
   let tAcc = 0, pAcc = 0;
@@ -463,7 +506,7 @@
     $('fb-fill').style.width = (frac * 100).toFixed(1) + '%';
     $('firebar').classList.toggle('low', !!st.night && frac < 0.2);
     const af = $('autofire'); if (af && document.activeElement !== af) af.checked = r.autoFire !== false;
-    $('fb-text').textContent = Math.floor(r.fireFuel) + ' / ' + fmax + (st.night ? ' · burns out in ' + U.fmtTime(r.fireFuel / G.burnRate(r)) : ' · burns ~' + Math.round(G.burnRate(r) * C.NIGHT_LEN) + ' per night');
+    $('fb-text').textContent = Math.floor(r.fireFuel) + ' / ' + fmax + (st.night ? ' · burns out in ' + U.fmtTime(r.fireFuel / G.burnRate(r)) : ' · burns ~' + Math.round(G.burnRate(r) * G.nightLen(r)) + ' per night');
     // night roster
     $('roster').classList.toggle('hidden', !st.night);
     if (st.night) tickRoster(r);
@@ -473,7 +516,7 @@
 
   function tickRoster(r) {
     const ro = $('roster');
-    const sig = r.survivors.map((s) => s.id + (s.alive ? 'a' : 'd')).join(',') + '|' + S().sel;
+    const sig = r.survivors.map((s) => s.id + (s.alive ? 'a' : 'd') + s.role + s.lvl).join(',') + '|' + S().sel;
     if (sig !== UI.rosterSig) {
       UI.rosterSig = sig;
       ro.innerHTML = '<div class="kicker">DEFENDERS</div>' + r.survivors.map((s) => `
@@ -497,7 +540,48 @@
   UI.toggleDrawer = function (kind) { if (kind === 'build' && S().place) { S().place = null; UI.toast('Placement cancelled.', 'neutral'); return; } if (UI.drawer === kind) UI.closeDrawer(); else { UI.drawer = kind; $('drawer').classList.remove('hidden'); UI.renderDrawer(true); } };
   UI.closeDrawer = function () { UI.drawer = null; $('drawer').classList.add('hidden'); document.querySelectorAll('#toolbar [data-act="drawer"]').forEach((b) => b.classList.remove('on')); };
 
-  const busyInside = (el) => el && el.contains(document.activeElement) && document.activeElement.tagName === 'SELECT';
+  const focusedSelect = (el) => { const a = document.activeElement; return a && a.tagName === 'SELECT' && el.contains(a) ? a : null; };
+  // Updates a panel with fresh HTML. If the player is using a dropdown inside it, that one dropdown is kept
+  // as it is (so it does not snap shut), while every other row, number and label is refreshed.
+  UI.patch = function (container, html) {
+    const focus = focusedSelect(container);
+    if (!focus) { if (container.__html !== html) { container.innerHTML = html; container.__html = html; } return; }
+    if (container.__html === html) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const oldKids = Array.from(container.children), newKids = Array.from(tmp.children);
+    const row = oldKids.find((k) => k.contains(focus));
+    const match = row && (row.dataset.row ? newKids.find((k) => k.dataset.row === row.dataset.row) : newKids[oldKids.indexOf(row)]);
+    if (!row || !match) { container.innerHTML = html; container.__html = html; return; }
+    // refresh the live parts of the row the player is using
+    match.querySelectorAll('[data-live]').forEach((n) => {
+      const o = row.querySelector('[data-live="' + n.dataset.live + '"]');
+      if (!o || o.contains(focus)) return;
+      if (o.innerHTML !== n.innerHTML) o.innerHTML = n.innerHTML;
+      if (o.className !== n.className) o.className = n.className;
+      const st = n.getAttribute('style') || '';
+      if ((o.getAttribute('style') || '') !== st) o.setAttribute('style', st);
+    });
+    const sameSelect = (a, b) => ['data-assign', 'data-role', 'data-addworker', 'data-guard', 'data-exped'].every((k) => a.getAttribute(k) === b.getAttribute(k));
+    match.querySelectorAll('select').forEach((n) => {
+      const o = Array.from(row.querySelectorAll('select')).find((x) => sameSelect(x, n));
+      if (!o) return;
+      if (o !== focus) { o.replaceWith(n); return; }
+      // the dropdown in use: refresh its option labels, availability and value in place
+      const fresh = Array.from(n.options), cur = Array.from(o.options);
+      if (fresh.length === cur.length && fresh.every((f, i) => f.value === cur[i].value)) {
+        fresh.forEach((f, i) => { if (cur[i].textContent !== f.textContent) cur[i].textContent = f.textContent; if (cur[i].disabled !== f.disabled) cur[i].disabled = f.disabled; });
+        const want = fresh.find((f) => f.selected);
+        if (want && o.value !== want.value) o.value = want.value;
+      }
+    });
+    // replace every other row around it
+    for (const k of oldKids) if (k !== row) k.remove();
+    const idx = newKids.indexOf(match);
+    newKids.slice(0, idx).forEach((n) => container.insertBefore(n, row));
+    newKids.slice(idx + 1).forEach((n) => container.appendChild(n));
+    container.__html = null; // something was left untouched; rebuild fully once the dropdown is closed
+  };
 
   UI.refreshPanels = function (force) {
     if (S().screen !== 'run') return;
@@ -528,7 +612,6 @@
 
   UI.renderDrawer = function (force) {
     const body = $('drawer-body');
-    if (!force && busyInside(body)) return;
     const r = run();
     const kind = UI.drawer;
     document.querySelectorAll('#toolbar [data-act="drawer"]').forEach((b) => b.classList.toggle('on', b.dataset.v === kind));
@@ -541,13 +624,13 @@
       html += `<p class="muted small">Buildings only work while people are assigned. ${idle ? '<b class="warn">' + idle + ' idle</b> · ' : ''}${G.freeBeds(r)} free bed(s).</p>`;
       html += alive.map((s) => {
         const max = G.maxHp(r, s), role = LC.ROLES[s.role];
-        return `<div class="scard">
+        return `<div class="scard" data-row="t${s.id}">
           ${portrait(s)}
           <div class="sinfo">
-            <div class="sname"><button class="link name" data-act="focus" data-sid="${s.id}">${esc(s.name)}</button> <span class="role" style="color:${role.color}">${role.name} · Lv ${s.lvl}</span></div>
-            <div class="hp"><i style="width:${Math.round(s.hp / max * 100)}%" class="${s.hp / max < 0.35 ? 'low' : ''}"></i></div>
+            <div class="sname"><button class="link name" data-act="focus" data-sid="${s.id}">${esc(s.name)}</button> <span class="role" data-live="role" style="color:${role.color}">${role.name} · Lv ${s.lvl}</span></div>
+            <div class="hp"><i data-live="hp" style="width:${Math.round(s.hp / max * 100)}%" class="${s.hp / max < 0.35 ? 'low' : ''}"></i></div>
             <select data-assign="${s.id}">${jobOptions(r, s)}</select>
-            <div class="tasknote">${esc(S().night ? LC.Night.status(r, s) : LC.Town.status(r, s))}</div>
+            <div class="tasknote" data-live="note">${esc(S().night ? LC.Night.status(r, s) : LC.Town.status(r, s))}</div>
           </div></div>`;
       }).join('');
     } else if (kind === 'roles') {
@@ -555,12 +638,12 @@
       html += '<p class="muted small">A role makes someone 50% better at one job and changes how they fight. Level and health carry over.</p>';
       html += alive.map((s) => {
         const role = LC.ROLES[s.role];
-        return `<div class="scard">
+        return `<div class="scard" data-row="r${s.id}">
           ${portrait(s)}
           <div class="sinfo">
-            <div class="sname">${esc(s.name)} <span class="role" style="color:${role.color}">Lv ${s.lvl}</span></div>
+            <div class="sname">${esc(s.name)} <span class="role" data-live="role" style="color:${role.color}">${role.name} · Lv ${s.lvl}</span></div>
             <select data-role="${s.id}">${Object.keys(LC.ROLES).map((k) => `<option value="${k}" ${k === s.role ? 'selected' : ''}>${LC.ROLES[k].name}</option>`).join('')}</select>
-            <div class="tasknote">${esc(role.desc)}<br><span class="muted">HP ${G.maxHp(r, s)} · melee ${G.meleeDmg(r, s).toFixed(0)} · arrows ${G.rangedDmg(r, s).toFixed(0)}</span></div>
+            <div class="tasknote" data-live="note">${esc(role.desc)}<br><span class="muted">HP ${G.maxHp(r, s)} · melee ${G.meleeDmg(r, s).toFixed(0)} · arrows ${G.rangedDmg(r, s).toFixed(0)}</span></div>
           </div></div>`;
       }).join('');
     } else if (kind === 'build') {
@@ -591,7 +674,8 @@
       $('drawer-title').textContent = '📜 Camp log';
       html += r.log.slice().reverse().map((l) => `<div class="logline ${l.kind}"><span class="muted">Day ${l.n} ${String(l.h).padStart(2, '0')}:00</span> ${esc(l.text)}</div>`).join('') || '<p class="muted">Nothing yet.</p>';
     }
-    body.innerHTML = html;
+    if (force && !focusedSelect(body)) body.__html = null;
+    UI.patch(body, html);
     body.scrollTop = scroll;
     paintPortraits(body, r.survivors);
   };
@@ -602,17 +686,17 @@
     const st = S();
     const r = run();
     if (!r || (!st.selB && !st.sel)) { el.classList.add('hidden'); return; }
-    if (!force && busyInside(el)) return;
     el.classList.remove('hidden');
+    if (force && !focusedSelect(el)) el.__html = null;
     if (st.selB) {
       const b = B.byId(r, st.selB);
       if (!b) { st.selB = null; el.classList.add('hidden'); return; }
-      el.innerHTML = buildingCard(r, b);
+      UI.patch(el, buildingCard(r, b));
       return;
     }
     const s = r.survivors.find((x) => x.id === st.sel);
     if (!s) { st.sel = null; el.classList.add('hidden'); return; }
-    el.innerHTML = survivorCard(r, s);
+    UI.patch(el, survivorCard(r, s));
     paintPortraits(el, r.survivors);
   };
 
@@ -661,17 +745,17 @@
     if (d.workers && b.lvl > 0) {
       const staff = B.staff(r, b), slots = B.slots(b);
       const cands = alive.filter((s) => s.task !== b.id);
-      html += `<div class="ins-box"><b>👷 Workers ${Math.min(staff.length, slots)} / ${slots}</b> ${staff.length ? '' : '<span class="warn">· inactive until someone works here</span>'}
-        <div class="staff">${staff.map((s) => `<span class="chip">${esc(s.name)} <small style="color:${LC.ROLES[s.role].color}">${LC.ROLES[s.role].name}</small><button class="x small" data-act="unassign" data-sid="${s.id}" title="Remove">✕</button></span>`).join('')}</div>
+      html += `<div class="ins-box" data-row="workers"><b data-live="wcount">👷 Workers ${Math.min(staff.length, slots)} / ${slots}</b> <span data-live="wwarn">${staff.length ? '' : '<span class="warn">· inactive until someone works here</span>'}</span>
+        <div class="staff" data-live="staff">${staff.map((s) => `<span class="chip">${esc(s.name)} <small style="color:${LC.ROLES[s.role].color}">${LC.ROLES[s.role].name}</small><button class="x small" data-act="unassign" data-sid="${s.id}" title="Remove">✕</button></span>`).join('')}</div>
         ${staff.length < slots && cands.length ? `<select data-addworker="${b.id}"><option value="">+ Assign someone…</option>${cands.map((s) => `<option value="${s.id}">${esc(s.name)} (${LC.ROLES[s.role].name}${LC.ROLES[s.role].job === b.type ? ' ★' : ''}) · now: ${esc(UI.jobName(r, s))}</option>`).join('')}</select>` : ''}
         <small class="muted">★ = role bonus here (+50%).</small></div>`;
     }
     if (b.type === 'tower' && b.lvl > 0) {
-      html += `<div class="ins-box"><b>🏹 Night guard</b><select data-guard="${b.id}"><option value="">Automatic (best available)</option>${alive.map((s) => `<option value="${s.id}" ${b.guard === s.id ? 'selected' : ''}>${esc(s.name)} (${LC.ROLES[s.role].name}${s.role === 'archer' ? ' ★' : ''})</option>`).join('')}</select>
+      html += `<div class="ins-box" data-row="guard"><b>🏹 Night guard</b><select data-guard="${b.id}"><option value="">Automatic (best available)</option>${alive.map((s) => `<option value="${s.id}" ${b.guard === s.id ? 'selected' : ''}>${esc(s.name)} (${LC.ROLES[s.role].name}${s.role === 'archer' ? ' ★' : ''})</option>`).join('')}</select>
         <small class="muted">Guards climb up at nightfall and keep their day job.</small></div>`;
     }
     if (b.type === 'expedition' && b.lvl > 0) {
-      html += `<div class="ins-box"><b>🧭 Destination</b><select data-exped="1">${LC.LOCS.map((l) => `<option value="${l.id}" ${r.expedition === l.id ? 'selected' : ''} ${r.night < l.unlock ? 'disabled' : ''}>${esc(l.name)} · risk ${Math.round(l.risk * 100)}%${r.night < l.unlock ? ' · from day ' + l.unlock : ''}</option>`).join('')}</select>
+      html += `<div class="ins-box" data-row="exped"><b>🧭 Destination</b><select data-exped="1">${LC.LOCS.map((l) => `<option value="${l.id}" ${r.expedition === l.id ? 'selected' : ''} ${r.night < l.unlock ? 'disabled' : ''}>${esc(l.name)} · risk ${Math.round(l.risk * 100)}%${r.night < l.unlock ? ' · from day ' + l.unlock : ''}</option>`).join('')}</select>
         <small class="muted">Leaves in the morning (before 13:00), back around 16:00.</small></div>`;
     }
     if (b.lvl > 0 && b.lvl < C.BMAX && !b.target) {
@@ -695,8 +779,8 @@
     return `<div class="ins-head">${portrait(s, 64)}<div><b>${esc(s.name)}</b><small style="color:${role.color}">${role.name} · Level ${s.lvl}</small></div><button class="x" data-act="closeInspector">✕</button></div>
       <div class="hp"><i style="width:${Math.round(s.hp / max * 100)}%" class="${s.hp / max < 0.35 ? 'low' : ''}"></i></div>
       <small class="muted">${Math.round(s.hp)}/${max} HP · ${s.lvl < C.MAX_LVL ? 'XP ' + Math.floor(s.xp) + '/' + G.xpNeed(s.lvl) : 'max level'} · ${esc(S().night ? LC.Night.status(r, s) : LC.Town.status(r, s))}</small>
-      <label class="field">Job<select data-assign="${s.id}">${jobOptions(r, s)}</select></label>
-      <label class="field">Role<select data-role="${s.id}">${Object.keys(LC.ROLES).map((k) => `<option value="${k}" ${k === s.role ? 'selected' : ''}>${LC.ROLES[k].name}</option>`).join('')}</select></label>
+      <label class="field" data-row="job">Job<select data-assign="${s.id}">${jobOptions(r, s)}</select></label>
+      <label class="field" data-row="role">Role<select data-role="${s.id}">${Object.keys(LC.ROLES).map((k) => `<option value="${k}" ${k === s.role ? 'selected' : ''}>${LC.ROLES[k].name}</option>`).join('')}</select></label>
       <small class="muted">${esc(role.desc)}</small>
       ${s.hp < max && r.res.meds >= 1 ? `<button class="btn small" data-act="heal" data-sid="${s.id}">${ICON.meds} Use medicine (+50 HP)</button>` : ''}
       ${S().night ? '<small class="muted">Tip: click the ground to move them, or an archer tower to send them up.</small>' : ''}`;

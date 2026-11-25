@@ -161,7 +161,7 @@
   function advance(sdt) {
     const run = S.run;
     const before = run.clock;
-    run.clock += sdt / C.HOUR;
+    run.clock += sdt / G.hourLen(run);
     if (S.night) {
       const res = LC.Night.update(run, S.night, sdt);
       if (res) { F.gameOver(res.reason); return 'stop'; }

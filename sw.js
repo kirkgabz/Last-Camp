@@ -3,7 +3,7 @@
  * Pages: network first (so updates arrive), cache when offline.
  * /api (accounts and saves): never cached.
  */
-const CACHE = 'lastcamp-v1';
+const CACHE = 'lastcamp-v3';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/util.js', 'js/data.js', 'js/game.js', 'js/town.js', 'js/night.js', 'js/draw.js', 'js/render.js', 'js/cloud.js', 'js/ui.js', 'js/main.js', 'js/app.js',

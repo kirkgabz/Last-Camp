@@ -229,7 +229,7 @@
 
   // ---------- per-frame worker update (day and dusk) ----------
   T.updateWorker = function (run, s, sdt) {
-    const dh = sdt / C.HOUR;
+    const dh = sdt / G.hourLen(run);
     s.atk = Math.max(0, s.atk - sdt * 3);
     s.hurt = Math.max(0, s.hurt - sdt * 4);
     s.aimT = 0;
