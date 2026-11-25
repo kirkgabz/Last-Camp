@@ -1,0 +1,19 @@
+{
+  "name": "last-camp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Last Camp: an endless survival strategy game with online saves.",
+  "type": "module",
+  "scripts": {
+    "dev": "node dev-server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "1.0.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.3"
+  }
+}
