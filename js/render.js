@@ -66,6 +66,7 @@
     R.scale = U.clamp(cssScale * dpr, 0.5, 2.5);
     R.cv.width = Math.round(C.W * R.scale);
     R.cv.height = Math.round(C.H * R.scale);
+    R.dark.width = Math.round(C.W / 2); R.dark.height = Math.round(C.H / 2);
     D.R = R.scale;
     R.gkey = null;
   };

@@ -146,6 +146,36 @@
         else A.play('deny');
         break;
       }
+      case 'demolish': {
+        const b = B.byId(r, +el.dataset.bid);
+        if (!b || !B.canDemolish(b)) break;
+        A.play('click');
+        const d = B.def(b.type);
+        const refund = B.demolishRefund(b);
+        const staff = B.staff(r, b).length;
+        let warn = '';
+        if (b.type === 'house') {
+          const bedsAfter = G.beds(r) - B.stat('house', 'beds', b.lvl);
+          if (bedsAfter < G.alive(r).length) warn = ' Your camp will have fewer beds than people, and no strangers can join until you build more.';
+        }
+        confirmBox('Demolish the ' + d.name + '?', 'You get back ' + (LC.fmtRes(refund) || 'nothing') + '.' + (staff ? ' ' + staff + ' worker(s) will become idle.' : '') + warn, 'Demolish', () => {
+          const got = B.demolish(r, b);
+          if (!got) return;
+          S().selB = null;
+          A.play('break');
+          const p = LC.Bld.pos(b);
+          LC.FX.burst(p.x, p.y - 20, 'splinter', 24); LC.FX.burst(p.x, p.y - 10, 'smoke', 10);
+          UI.toast(d.name + ' demolished.' + (Object.keys(got).length ? ' Refunded ' + LC.fmtRes(got) + '.' : ''), 'neutral');
+          G.save(r);
+          UI.refreshPanels(true);
+        });
+        break;
+      }
+      case 'install': {
+        A.play('click');
+        LC.App.install().then((res) => { if (res === 'ios') UI.showIOSInstall(); else if (res === 'unavailable') UI.toast('Use your browser menu to install or "Add to Home Screen".', 'neutral'); UI.showMenu(true); });
+        break;
+      }
       case 'cancelBuild': {
         const b = B.byId(r, +el.dataset.bid);
         if (b && B.cancel(r, b)) { A.play('click'); UI.toast('Construction cancelled. Half the cost was refunded.', 'neutral'); if (b.lvl === 0) S().selB = null; G.save(r); UI.refreshPanels(true); }
@@ -254,7 +284,7 @@
                ${Cl.available() ? '<button class="btn small primary" data-act="signin">Sign in / Create account</button>' : ''}`}
       </div>
       <div class="menu-box">
-        <div class="logo">LAST<br>CAMP</div>
+        <div class="logo-row"><img class="emblem" src="icons/icon-192.png" alt=""><div class="logo">LAST<br>CAMP</div></div>
         <div class="tag">Build the town. Keep the fire burning.</div>
         <div class="menu-btns">
           ${busy ? '<div class="syncing-note">☁ Loading your save…</div>' : ''}
@@ -262,6 +292,7 @@
           <button class="btn ${save ? '' : 'primary'} big" data-act="new" ${busy ? 'disabled' : ''}>New Run</button>
           <button class="btn big" data-act="shop">${ICON.ember} Embers <small>${m.embers} to spend</small></button>
           <button class="btn big" data-act="how">How to Play</button>
+          ${LC.App && LC.App.installable() ? '<button class="btn big install" data-act="install"><span>📲 Install App</span><small>' + (LC.App.isIOS ? 'Add to Home Screen' : 'Play full screen, offline') + '</small></button>' : ''}
         </div>
         <div class="menu-stats">
           <div><b>${m.best}</b><small>best nights</small></div>
@@ -269,7 +300,7 @@
           <div><b>${m.totalKills}</b><small>total kills</small></div>
         </div>
       </div>
-      <div class="menu-foot">Drag to look around · scroll to zoom · <kbd>Space</kbd> pause · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> speed · <kbd>T</kbd> tasks · <kbd>R</kbd> roles · <kbd>B</kbd> build · <kbd>F</kbd> fire · <kbd>M</kbd> sound</div>
+      <div class="menu-foot">${LC.App && LC.App.isTouch ? 'Drag to look around · pinch to zoom · tap people and buildings to select them' : 'Drag to look around · scroll to zoom · <kbd>Space</kbd> pause · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> speed · <kbd>T</kbd> tasks · <kbd>R</kbd> roles · <kbd>B</kbd> build · <kbd>F</kbd> fire · <kbd>M</kbd> sound'}</div>
     `;
   };
 
@@ -301,7 +332,17 @@
         <p><b>🏠 Houses</b> set how many people can live in camp. Strangers can only join if there is a free bed.</p>
         <p><b>🌙 Night.</b> The dead come at random from every direction. While the palisade stands they can only claw at it. <b>Click a survivor</b>, then the ground to move them or an archer tower to man it. Keep the fire fed (<kbd>F</kbd>): <b>if it goes out at night, you lose.</b></p>
         <p>Every 3 nights you choose a perk. Dying gives embers for permanent upgrades.</p>
+        <p><b>🧨 Demolish.</b> Select any building except the palisade, gate or campfire and tap Demolish to get 40% of its cost back.</p>
+        <p><b>📱 Phones.</b> Play in landscape: drag to look around, pinch to zoom, tap to select. Install the app from the main menu for full screen.</p>
       </div>
+      <div class="modal-foot"><button class="btn primary" data-act="close">Got it</button></div>`);
+  };
+
+  UI.showIOSInstall = function () {
+    openModal(`
+      <div class="event"><img class="emblem big" src="icons/icon-192.png" alt=""><div><h2>Install Last Camp</h2>
+      <p>Play full screen in landscape, right from your home screen:</p>
+      <ol class="steps"><li>Tap the <b>Share</b> button <span class="kbdish">⬆︎</span> at the bottom of Safari.</li><li>Choose <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>, then open Last Camp from your home screen.</li></ol></div></div>
       <div class="modal-foot"><button class="btn primary" data-act="close">Got it</button></div>`);
   };
 
@@ -402,7 +443,7 @@
       const fc = LC.Night.forecast(r);
       html = '☀ <b>Day ' + r.night + '.</b> Work until dusk · tonight\'s threat: <b>' + fc.label + '</b>'; cls = 'day';
     }
-    if (st.place) { html = '🔨 Click a highlighted spot to build a <b>' + B.def(st.place.type).name + '</b>. Right-click or Esc to cancel.'; cls = 'place'; }
+    if (st.place) { html = '🔨 ' + (LC.input && LC.input.touch ? 'Tap' : 'Click') + ' a highlighted spot to build a <b>' + B.def(st.place.type).name + '</b>. ' + (LC.input && LC.input.touch ? 'Tap Build again' : 'Right-click or Esc') + ' to cancel.'; cls = 'place'; }
     if (b.innerHTML !== html) b.innerHTML = html;
     b.className = 'banner ' + cls;
     // resources
@@ -453,7 +494,7 @@
 
   // ---------- drawers ----------
   UI.drawer = null;
-  UI.toggleDrawer = function (kind) { if (UI.drawer === kind) UI.closeDrawer(); else { UI.drawer = kind; $('drawer').classList.remove('hidden'); UI.renderDrawer(true); } };
+  UI.toggleDrawer = function (kind) { if (kind === 'build' && S().place) { S().place = null; UI.toast('Placement cancelled.', 'neutral'); return; } if (UI.drawer === kind) UI.closeDrawer(); else { UI.drawer = kind; $('drawer').classList.remove('hidden'); UI.renderDrawer(true); } };
   UI.closeDrawer = function () { UI.drawer = null; $('drawer').classList.add('hidden'); document.querySelectorAll('#toolbar [data-act="drawer"]').forEach((b) => b.classList.remove('on')); };
 
   const busyInside = (el) => el && el.contains(document.activeElement) && document.activeElement.tagName === 'SELECT';
@@ -644,6 +685,8 @@
         html += `<small class="warn">${overCap ? 'This costs more than you can store. Build or upgrade a Storehouse.' : 'Not enough resources yet.'}</small>`;
       }
     } else if (b.lvl >= C.BMAX) html += '<div class="ins-up"><b class="gold">★ Maximum level</b></div>';
+    if (B.canDemolish(b)) html += `<div class="ins-demo"><button class="btn small danger" data-act="demolish" data-bid="${b.id}">🧨 Demolish</button><small class="muted">Refunds 40% of what it cost.</small></div>`;
+    else html += '<div class="ins-demo"><small class="muted">' + (b.type === 'fire' ? 'The campfire cannot be demolished. It is the heart of the camp.' : 'The ' + (b.type === 'gate' ? 'gate is part of the palisade and' : 'palisade') + ' cannot be demolished.') + '</small></div>';
     return html;
   }
 

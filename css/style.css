@@ -10,10 +10,12 @@
   --gold: #f0c060;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+body { position: fixed; inset: 0; touch-action: none; }
 body { font-family: Inter, "Segoe UI", system-ui, sans-serif; color: var(--text); user-select: none; -webkit-user-select: none; }
 #stage { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; overflow: hidden; background: #000; }
-#cv { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; display: block; }
+#cv { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; display: block; touch-action: none; }
+.drawer-body, #inspector, #roster, .card, #modal { touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 #ui { position: absolute; inset: 0; pointer-events: none; font-size: 13px; }
 #ui .panel, #ui button, #ui select, #menu .menu-box, #modal, #hint { pointer-events: auto; }
 .hidden { display: none !important; }
@@ -197,7 +199,7 @@ table.stats td.up { color: #9fd88e; }
 
 /* ---------- menu ---------- */
 #menu { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(5, 4, 3, .82) 0%, rgba(5, 4, 3, .55) 36%, rgba(5, 4, 3, 0) 60%); pointer-events: none; }
-.menu-box { position: absolute; left: 72px; top: 92px; width: 380px; }
+.menu-box { position: absolute; left: 72px; top: 70px; width: 400px; }
 .logo { font: 800 86px/.9 Cinzel, Georgia, serif; color: #ffcf7a; letter-spacing: 4px; text-shadow: 0 0 30px rgba(255, 120, 30, .45), 0 4px 0 #3a1c08; }
 .tag { margin: 14px 0 26px; color: #d8c4a2; font-size: 15px; font-style: italic; }
 .menu-btns { display: flex; flex-direction: column; gap: 10px; }
@@ -264,3 +266,21 @@ table.stats td.up { color: #9fd88e; }
 .autofeed { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 11px; color: #d8c4a2; cursor: pointer; }
 .autofeed input { accent-color: #d9822b; margin: 0; cursor: pointer; }
 #ui .autofeed, #ui .autofeed input { pointer-events: auto; }
+
+/* ---------- app: logo, install, rotate notice ---------- */
+.logo-row { display: flex; align-items: center; gap: 16px; }
+.emblem { width: 92px; height: 92px; border-radius: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, .6), 0 0 40px rgba(255, 120, 30, .25); flex: none; }
+.emblem.big { width: 96px; height: 96px; }
+.btn.big.install { background: linear-gradient(#2f4a2a, #1f3320); border-color: #7fb069; }
+.steps { margin: 8px 0 0; padding-left: 20px; line-height: 1.7; font-size: 13.5px; }
+.kbdish { display: inline-block; padding: 0 6px; border: 1px solid #6b4e30; border-radius: 5px; background: #2a1f16; }
+.ins-demo { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 7px; border-top: 1px dashed rgba(138, 95, 52, .35); }
+.ins-demo .btn.small { margin-top: 0 !important; }
+#rotate { display: none; position: fixed; inset: 0; z-index: 50; background: radial-gradient(ellipse at 50% 40%, #3a1a0c 0%, #0b0807 70%); color: #f2e7d4; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px; font-family: Inter, "Segoe UI", sans-serif; }
+#rotate.show { display: flex; }
+#rotate img { width: 96px; height: 96px; border-radius: 20px; box-shadow: 0 0 40px rgba(255, 120, 30, .35); }
+#rotate b { font: 800 22px Cinzel, Georgia, serif; color: #ffd690; }
+#rotate small { color: #a9967c; font-size: 14px; }
+#rotate .phone { width: 44px; height: 74px; border: 3px solid #ffd690; border-radius: 9px; position: relative; animation: turn 2.2s ease-in-out infinite; }
+#rotate .phone::after { content: ''; position: absolute; left: 50%; bottom: 5px; width: 8px; height: 3px; margin-left: -4px; background: #ffd690; border-radius: 2px; }
+@keyframes turn { 0%, 25% { transform: rotate(0deg); } 55%, 100% { transform: rotate(-90deg); } }

@@ -1,5 +1,7 @@
 # Last Camp
 
+![Last Camp](icons/og-image.png)
+
 An endless survival strategy game. Keep the fire burning and your survivors alive for as many nights as you can. Every night is harder than the last.
 
 ## How to run
@@ -9,6 +11,15 @@ An endless survival strategy game. Keep the fire burning and your survivors aliv
   This uses a temporary built-in database, so accounts reset when the server stops.
 - **For real players:** deploy to Vercel (below). Players open your Vercel link, create an account,
   and their latest camp loads on any device they sign in from.
+
+## Install as an app (phones and desktop)
+
+Once deployed, open the site and tap **📲 Install App** in the main menu (Android and desktop Chrome/Edge).
+On iPhone/iPad: Safari → **Share** → **Add to Home Screen**. The installed app opens full screen, locked to
+landscape, and works offline (`manifest.webmanifest`, `sw.js`). Online saves still need a connection.
+
+On phones the layout is unchanged; wide screens simply show more of the world. Touch controls: drag to pan,
+pinch to zoom, tap to select. Holding the phone upright shows a "turn your phone sideways" notice and pauses the game.
 
 ## Online accounts and saves
 
@@ -46,6 +57,7 @@ Note: the backend doesn't send email, so there is no "forgot password" reset yet
 - **🔨 Build:** pick a building, then click a highlighted spot. Click any building to see its stats, staff it and upgrade it (levels 1–5). Big upgrades need stone and a Storehouse.
 - **🏠 Houses** decide how many people can live in camp. Strangers can only join when there is a free bed.
 - **Night:** the dead arrive at random, from every direction. While the palisade stands they can only claw at it. Click a survivor, then the ground (or an archer tower) to give orders. If the fire goes out at night, the run ends. The fire keeper auto-feeds it from the woodpile (you can switch that off).
+- **🧨 Demolish** any building except the palisade, gate and campfire (40% refund).
 - Every 3 nights you pick a perk. Dying gives **embers** for permanent upgrades.
 
 Controls: drag to pan · scroll to zoom · `WASD`/arrows pan · `C` re-centre · `Space` pause · `1` `2` `3` speed · `T` tasks · `R` roles · `B` build · `L` log · `F` add wood · `M` sound · `Esc` cancel
@@ -66,6 +78,8 @@ The game saves on this device at 06:00, 12:00, 18:00, after building or assignme
 | `js/ui.js` | menus, panels, modals |
 | `js/main.js` | game loop, input, game flow |
 | `js/cloud.js` | accounts and online save sync (talks to `/api`) |
+| `js/app.js` | installable app: service worker, install button, landscape and fullscreen on phones |
+| `sw.js`, `manifest.webmanifest`, `icons/` | offline cache, app manifest, logo and icons |
 | `api/` | backend: `auth.js`, `save.js`, `_lib/db.js` (Neon / local PGlite), `_lib/http.js` |
 | `dev-server.mjs` | local server for `npm run dev` |
 

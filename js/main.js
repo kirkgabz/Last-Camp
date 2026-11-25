@@ -24,6 +24,7 @@
   }
 
   F.newRun = function () {
+    if (LC.App) LC.App.goLandscape();
     G.clearSave();
     const run = G.newRun(S.meta);
     enterRun(run);
@@ -32,6 +33,7 @@
   };
 
   F.continueRun = function () {
+    if (LC.App) LC.App.goLandscape();
     const r = G.load();
     if (!r) { LC.UI.toast('No saved camp found.', 'bad'); LC.UI.showMenu(); return; }
     for (const s of r.survivors) G.placeIdle(s);
@@ -273,22 +275,23 @@
     const rect = R.cv.getBoundingClientRect();
     return { x: (e.clientX - rect.left) / rect.width * C.W, y: (e.clientY - rect.top) / rect.height * C.H };
   }
-  function pickSurvivor(r, p) {
+  function pickSurvivor(r, p, tol) {
+    const k = tol || 1;
     let best = null, bd = Infinity;
     for (const s of r.survivors) {
       if (!s.alive || s.hidden) continue;
       const by = s.onTower ? s.y - LC.Draw.TOWER_H - 5 : s.y;
-      if (Math.abs(p.x - s.x) <= 16 && p.y <= by + 5 && p.y >= by - 62) {
+      if (Math.abs(p.x - s.x) <= 16 * k && p.y <= by + 5 * k && p.y >= by - 62 - 8 * (k - 1)) {
         const d = Math.abs(p.x - s.x) + Math.abs(p.y - (by - 29));
         if (d < bd) { bd = d; best = s; }
       }
     }
     return best;
   }
-  function spotAt(p) {
+  function spotAt(p, tol) {
     if (!S.place) return null;
     const d = B.def(S.place.type);
-    const rad = d.place === 'plot' ? 55 : 30;
+    const rad = (d.place === 'plot' ? 55 : 30) * (tol || 1);
     let best = null, bd = rad;
     for (const sp of R.freeSpots(S.run, S.place.type)) {
       const dd = Math.hypot(p.x - sp.x, (p.y - sp.y) * 1.4);
@@ -297,24 +300,47 @@
     return best;
   }
 
-  let down = null;
-  function onDown(e) {
+  // pointer input: mouse, touch and pen. One finger taps or drags, two fingers pinch-zoom.
+  const pts = new Map();
+  let down = null, pinch = null;
+  LC.input = { touch: false };
+  function cancelOrDeselect() {
+    if (S.place) { S.place = null; return; }
+    S.sel = null; S.selB = null; LC.UI.refreshPanels(true);
+  }
+  function onPointerDown(e) {
     A.init();
-    if (e.button === 2) {
-      if (S.place) { S.place = null; return; }
-      S.sel = null; S.selB = null; LC.UI.refreshPanels(true);
+    const mouse = e.pointerType === 'mouse';
+    LC.input.touch = !mouse;
+    if (mouse && e.button === 2) { cancelOrDeselect(); return; }
+    if (mouse && e.button !== 0 && e.button !== 1) return;
+    try { R.cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    const sp = screenPos(e);
+    pts.set(e.pointerId, sp);
+    if (pts.size === 1) down = { x: sp.x, y: sp.y, drag: false, btn: mouse ? e.button : 0, touch: !mouse, id: e.pointerId };
+    else if (pts.size === 2) {
+      down = null;
+      const v = Array.from(pts.values());
+      pinch = { d: Math.max(1, Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y)), cx: (v[0].x + v[1].x) / 2, cy: (v[0].y + v[1].y) / 2 };
+    }
+  }
+  function onPointerMove(e) {
+    const sp = screenPos(e);
+    if (pts.has(e.pointerId)) pts.set(e.pointerId, sp);
+    if (pinch && pts.size >= 2) {
+      const v = Array.from(pts.values());
+      const d = Math.max(1, Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y)), cx = (v[0].x + v[1].x) / 2, cy = (v[0].y + v[1].y) / 2;
+      R.pan(pinch.cx - cx, pinch.cy - cy);
+      R.zoomAt(cx, cy, d / pinch.d);
+      pinch = { d, cx, cy };
       return;
     }
-    const sp = screenPos(e);
-    down = { x: sp.x, y: sp.y, drag: false, btn: e.button };
-  }
-  function onMove(e) {
-    const sp = screenPos(e);
-    if (down && (down.btn === 0 || down.btn === 1)) {
+    if (down && e.pointerId === down.id && (down.btn === 0 || down.btn === 1)) {
       const dx = sp.x - down.x, dy = sp.y - down.y;
-      if (!down.drag && Math.hypot(dx, dy) > 6) down.drag = true;
+      if (!down.drag && Math.hypot(dx, dy) > (down.touch ? 12 : 6)) down.drag = true;
       if (down.drag) { R.pan(-dx, -dy); down.x = sp.x; down.y = sp.y; R.cv.style.cursor = 'grabbing'; return; }
     }
+    if (e.pointerType !== 'mouse' || down) return; // hover is for mice only
     const r = S.screen === 'run' ? S.run : null;
     if (!r) { S.hover = null; return; }
     const p = R.s2w(sp.x, sp.y);
@@ -324,20 +350,30 @@
     const b = !s && R.hitBuilding(r, p.x, p.y);
     R.cv.style.cursor = s || b || (S.night && S.sel) ? 'pointer' : 'grab';
   }
-  function onUp(e) {
+  function onPointerUp(e) {
+    pts.delete(e.pointerId);
+    if (pinch) { if (pts.size < 2) pinch = null; down = null; return; }
+    if (!down || e.pointerId !== down.id) return;
     const d = down;
     down = null;
     R.cv.style.cursor = 'default';
-    if (!d || d.drag || d.btn !== 0) return;
+    if (d.drag || d.btn !== 0) return;
+    tap(d.x, d.y, d.touch);
+  }
+  function onPointerCancel(e) { pts.delete(e.pointerId); pinch = null; down = null; }
+
+  function tap(sx, sy, touch) {
     const r = S.screen === 'run' ? S.run : null;
     if (!r || r.phase !== 'play' || LC.UI.modalOpen()) return;
-    const p = R.s2w(d.x, d.y);
+    const tol = touch ? 1.7 : 1;
+    const p = R.s2w(sx, sy);
     if (S.place) {
-      const sp = spotAt(p);
-      if (sp) F.placeAt(sp.id); else { LC.UI.toast('Click one of the highlighted spots (right-click to cancel).', 'neutral'); A.play('deny'); }
+      const sp = spotAt(p, touch ? 1.3 : 1);
+      if (sp) F.placeAt(sp.id);
+      else { LC.UI.toast(touch ? 'Tap one of the highlighted spots (tap Build again to cancel).' : 'Click one of the highlighted spots (right-click to cancel).', 'neutral'); A.play('deny'); }
       return;
     }
-    const s = pickSurvivor(r, p);
+    const s = pickSurvivor(r, p, tol);
     if (s) { S.sel = S.sel === s.id ? null : s.id; S.selB = null; A.play('click'); LC.UI.refreshPanels(true); return; }
     const sel = S.sel ? r.survivors.find((o) => o.id === S.sel && o.alive) : null;
     if (S.night && sel) {
@@ -384,13 +420,19 @@
   }
   function onKeyUp(e) { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; S.keys[k] = false; }
 
+  // keep the 720-unit-tall layout; on wide screens (phones in landscape) show more world instead of black bars
   function fit() {
     const stage = document.getElementById('stage');
-    const s = Math.min(window.innerWidth / C.W, window.innerHeight / C.H);
+    const vw = window.innerWidth, vh = window.innerHeight;
+    C.W = Math.round(U.clamp(C.H * vw / vh, 1280, 1720));
+    const s = Math.min(vw / C.W, vh / C.H);
+    stage.style.width = C.W + 'px';
+    R.cv.style.width = C.W + 'px';
     stage.style.transform = 'scale(' + s + ')';
-    stage.style.left = Math.round((window.innerWidth - C.W * s) / 2) + 'px';
-    stage.style.top = Math.round((window.innerHeight - C.H * s) / 2) + 'px';
+    stage.style.left = Math.round((vw - C.W * s) / 2) + 'px';
+    stage.style.top = Math.round((vh - C.H * s) / 2) + 'px';
     R.resize(s);
+    R.clampCam();
   }
 
   function makeDemo() {
@@ -412,9 +454,11 @@
     R.init(cv);
     fit();
     window.addEventListener('resize', fit);
+    window.addEventListener('orientationchange', () => setTimeout(fit, 250));
     S.demo = makeDemo();
     LC.UI.init();
     LC.UI.showMenu();
+    if (LC.App) LC.App.onChange(() => { if (S.screen === 'menu' && !LC.UI.modalOpen()) LC.UI.showMenu(); });
     LC.Cloud.onChange(() => {
       if (S.screen === 'menu') { S.meta = G.loadMeta(); if (!LC.UI.modalOpen()) LC.UI.showMenu(); }
       else LC.UI.syncCloud();
@@ -425,9 +469,11 @@
         if (save) LC.UI.toast('Welcome back! Your camp on day ' + save.night + ' is ready.', 'good');
       }
     });
-    cv.addEventListener('mousedown', onDown);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    cv.addEventListener('pointerdown', onPointerDown);
+    cv.addEventListener('pointermove', onPointerMove);
+    cv.addEventListener('pointerup', onPointerUp);
+    cv.addEventListener('pointercancel', onPointerCancel);
+    cv.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !down) S.hover = null; });
     cv.addEventListener('wheel', onWheel, { passive: false });
     cv.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', onKey);

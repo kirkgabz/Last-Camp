@@ -122,6 +122,30 @@
     }
     return before;
   };
+  // demolition: everything except the wall, the gate (part of the wall) and the campfire
+  B.PROTECTED = ['wall', 'gate', 'fire'];
+  B.canDemolish = (b) => B.PROTECTED.indexOf(b.type) < 0;
+  B.demolishRefund = function (b) {
+    const out = {};
+    const add = (c) => { for (const k in c) out[k] = (out[k] || 0) + c[k]; };
+    for (let l = 1; l <= b.lvl; l++) add(B.cost(b.type, l));
+    if (b.target) add(B.cost(b.type, b.target));
+    for (const k in out) { out[k] = Math.floor(out[k] * 0.4); if (!out[k]) delete out[k]; }
+    return out;
+  };
+  B.demolish = function (run, b) {
+    if (!b || !B.canDemolish(b) || run.buildings.indexOf(b) < 0) return null;
+    const refund = B.demolishRefund(b);
+    for (const k in refund) G.addRes(run, k, refund[k]);
+    run.buildings = run.buildings.filter((x) => x !== b);
+    for (const s of run.survivors) {
+      if (s.task === b.id) { s.task = 'idle'; s.job = null; s.working = null; }
+      if (s.tower === b.id) { s.tower = -1; s.onTower = false; }
+      if (s.job && s.job.b === b.id) { s.job = null; s.working = null; }
+    }
+    G.log(run, B.def(b.type).name + ' demolished.', 'neutral');
+    return refund;
+  };
   B.sites = (run) => run.buildings.filter((b) => b.target).sort((a, b) => a.started - b.started);
 
   // ---------- game rules ----------
